@@ -41,4 +41,10 @@ func main() {
 	left, right := "лево", "право"
 	left, right = right, left
 	fmt.Println("После обмена:", left, right) // После обмена: право лево
+
+	// Индекс слева вычисляется до записи нового значения в index.
+	items := [2]int{10, 20}
+	index := 0
+	index, items[index] = 1, 99
+	fmt.Println("Индекс и массив:", index, items) // Индекс и массив: 1 [99 20]
 }
