@@ -3,42 +3,35 @@ package main
 import "fmt"
 
 func main() {
-	a, b := 7, 2
-	// Каждое сравнение возвращает bool
-	// Сравнение ==
-	fmt.Println("7 == 2 =", a == b) // 7 == 2 = false
-	// Не равно
-	fmt.Println("7 != 2 =", a != b) // 7 != 2 = true
-	// Меньше
-	fmt.Println("7 < 2 =", a < b) // 7 < 2 = false
-	// Меньше либо равно
-	fmt.Println("7 <= 7 =", a <= 7) // 7 <= 7 = true
-	// Больше
-	fmt.Println("7 > 2 =", a > b) // 7 > 2 = true
-	// Больше либо равно
-	fmt.Println("2 >= 7 =", b >= a) // 2 >= 7 = false
+	// uint8 задаёт ширину в 8 бит. Формат %08b выводит двоичную запись с ведущими нулями.
+	var a, b uint8 = 0b00001100, 0b00001010
+	fmt.Printf("a = %08b, b = %08b\n", a, b) // a = 00001100, b = 00001010
 
-	age := 20
-	hasTicket := false
-	isAdult := age >= 18
-	canEnter := isAdult && hasTicket                            // Для входа нужны оба условия.
-	fmt.Println("isAdult && hasTicket =", canEnter)             // isAdult && hasTicket = false
-	fmt.Println("isAdult || hasTicket =", isAdult || hasTicket) // isAdult || hasTicket = true
-	fmt.Println("!hasTicket =", !hasTicket)                     // !hasTicket = true
+	// Операторы объединяют биты на одинаковых позициях.
+	fmt.Printf("a & b  = %08b\n", a&b)  // a & b  = 00001000
+	fmt.Printf("a | b  = %08b\n", a|b)  // a | b  = 00001110
+	fmt.Printf("a ^ b  = %08b\n", a^b)  // a ^ b  = 00000110
+	fmt.Printf("a &^ b = %08b\n", a&^b) // a &^ b = 00000100
 
-	// При ложной левой части && правая часть пропускается. Деления на ноль здесь нет.
-	divisor := 0
-	isBigEnough := divisor != 0 && a/divisor > 2
-	fmt.Println("Безопасная проверка =", isBigEnough) // Безопасная проверка = false
+	// Унарный ^ переворачивает все восемь битов числа a.
+	fmt.Printf("^a     = %08b\n", ^a) // ^a     = 11110011
 
-	// if принимает любое выражение типа bool, в том числе готовую переменную.
-	var message string // ""
+	// При сдвиге беззнакового числа освободившиеся позиции заполняются нулями.
+	fmt.Printf("a << 1 = %08b\n", a<<1) // a << 1 = 00011000
+	fmt.Printf("a >> 1 = %08b\n", a>>1) // a >> 1 = 00000110
 
-	if canEnter {
-		message = "Вход разрешён"
-	} else {
-		message = "Вход закрыт"
-	}
+	// Один бит на флаг. Маска позволяет хранить несколько флагов в одном числе.
+	const (
+		read uint8 = 1 << iota
+		write
+		execute
+	)
+	flags := read | execute
+	fmt.Printf("Исходные флаги: %08b\n", flags)        // Исходные флаги: 00000101
+	fmt.Println("Запись разрешена:", flags&write != 0) // Запись разрешена: false
 
-	fmt.Println(message) // Вход закрыт
+	flags = flags | write
+	fmt.Printf("Разрешили запись: %08b\n", flags) // Разрешили запись: 00000111
+	flags = flags &^ execute
+	fmt.Printf("Запретили выполнение: %08b\n", flags) // Запретили выполнение: 00000011
 }
