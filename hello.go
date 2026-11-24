@@ -41,4 +41,15 @@ func main() {
 		total += value
 	}
 	fmt.Println("Сумма элементов:", total) // Сумма элементов: 15
+
+	// Перебор значения массива читает элементы снимка, сделанного до цикла.
+	sample := [3]int{1, 2, 3}
+	snapshotSum := 0
+	for index, value := range sample {
+		if index == 0 {
+			sample[1] = 20
+		}
+		snapshotSum += value
+	}
+	fmt.Println("Сумма снимка и массив:", snapshotSum, sample) // Сумма снимка и массив: 6 [1 20 3]
 }
