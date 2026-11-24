@@ -2,43 +2,58 @@ package main
 
 import "fmt"
 
-// Все пять элементов получают нулевое значение типа int.
-var numbers [5]int
-var values = [5]int{1, 2, 3, 4, 5}
-
 func main() {
-	letters := [5]string{"a", "b", "c", "d", "e"}
-	inferredLength := [...]int{1} // Go выводит тип [1]int.
-	partial := [5]int{1}          // Остальные четыре элемента равны 0.
-	sparse := [...]int{3: 7}      // Последний индекс 3, поэтому длина равна 4.
+	a, b, c := 5, 6, 5
 
-	fmt.Println("Нулевые значения:", numbers)                             // Нулевые значения: [0 0 0 0 0]
-	fmt.Println("Заданные значения:", values)                             // Заданные значения: [1 2 3 4 5]
-	fmt.Println("Строки:", letters)                                       // Строки: [a b c d e]
-	fmt.Printf("Выведенный тип: %T %v\n", inferredLength, inferredLength) // Выведенный тип: [1]int [1]
-	fmt.Println("Частичное заполнение:", partial)                         // Частичное заполнение: [1 0 0 0 0]
-	fmt.Println("Элемент по индексу 3:", sparse)                          // Элемент по индексу 3: [0 0 0 7]
+	// Если обе проверки дали false, a меньше либо равно и b, и c.
+	var relation string
 
-	// Индексы начинаются с нуля. Последний индекс равен len(values) - 1.
-	fmt.Println("Длины:", len(letters), len(inferredLength))             // Длины: 5 1
-	fmt.Println("Первый и последний:", values[0], values[len(values)-1]) // Первый и последний: 1 5
-
-	// Массивы одного типа сравниваются по элементам на одинаковых позициях.
-	nums1 := [4]int{3, 4, 5, 6}
-	nums2 := [4]int{3, 4, 5}
-	nums3 := [4]int{3, 4, 5, 0}
-	fmt.Println("nums1 == nums2:", nums1 == nums2) // nums1 == nums2: false
-	fmt.Println("nums2 == nums3:", nums2 == nums3) // nums2 == nums3: true
-
-	// Присваивание копирует массив целиком. Изменяем первый элемент копии.
-	copied := values
-	copied[0] = 99
-	fmt.Println("Оригинал:", values, "Копия:", copied) // Оригинал: [1 2 3 4 5] Копия: [99 2 3 4 5]
-
-	// range возвращает индекс и значение элемента. Здесь индекс пропускаем через _.
-	total := 0
-	for _, value := range values {
-		total += value
+	if a > b {
+		relation = "a > b"
+	} else if a > c {
+		relation = "a > c"
+	} else {
+		relation = "a <= b и a <= c"
 	}
-	fmt.Println("Сумма элементов:", total) // Сумма элементов: 15
+	fmt.Println("Сравнение:", relation) // Сравнение: a <= b и a <= c
+
+	// remainder доступна в условии и внутри обеих веток.
+	var divisionResult string
+
+	if remainder := 17 % 3; remainder == 0 {
+		divisionResult = "делится на 3"
+	} else {
+		divisionResult = fmt.Sprintf("остаток %d", remainder)
+	}
+	fmt.Println("17 / 3:", divisionResult) // 17 / 3: остаток 2
+
+	// Три значения показывают обычное совпадение, fallthrough и default.
+	for _, value := range [3]int{4, c, 7} {
+		switch value {
+			case 3, 4:
+				fmt.Printf("switch(%d), case 3 или 4\n", value) // switch(4), case 3 или 4
+			case 5:
+				fmt.Printf("switch(%d), case 5\n", value) // switch(5), case 5
+				fallthrough                               // Выполняет следующий блок, даже если value != 6.
+			case 6:
+				fmt.Printf("switch(%d), case 6\n", value) // switch(5), case 6
+			default:
+				fmt.Printf("switch(%d), default\n", value) // switch(7), default
+		}
+	}
+
+	// Без выражения после switch каждая ветка задаёт условие.
+	temperature := 18
+
+	var weather string
+
+	switch {
+		case temperature < 0:
+			weather = "морозно"
+		case temperature >= 25:
+			weather = "жарко"
+		default:
+			weather = "умеренно"
+	}
+	fmt.Println("На улице:", weather) // На улице: умеренно
 }
