@@ -43,4 +43,15 @@ func main() {
 	var text string
 	var flag bool
 	fmt.Printf("zero values: %v, %q, %v\n", number, text, flag) // zero values: 0, "", false
+
+	// cents — отдельный тип, amount — альтернативное имя int.
+	type cents int
+	type amount = int
+	var stored cents = 25
+	var unit amount = 5
+	fmt.Println("Сумма после преобразования:", int(stored)+unit) // Сумма после преобразования: 30
+
+	// Строки могут содержать байты вне UTF-8, и индекс возвращает байт.
+	raw := "\xff"
+	fmt.Printf("Байт строки: %x\n", raw[0]) // Байт строки: ff
 }
