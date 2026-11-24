@@ -4,32 +4,41 @@ import "fmt"
 
 func main() {
 	a, b := 7, 2
+	// Каждое сравнение возвращает bool
+	// Сравнение ==
+	fmt.Println("7 == 2 =", a == b) // 7 == 2 = false
+	// Не равно
+	fmt.Println("7 != 2 =", a != b) // 7 != 2 = true
+	// Меньше
+	fmt.Println("7 < 2 =", a < b) // 7 < 2 = false
+	// Меньше либо равно
+	fmt.Println("7 <= 7 =", a <= 7) // 7 <= 7 = true
+	// Больше
+	fmt.Println("7 > 2 =", a > b) // 7 > 2 = true
+	// Больше либо равно
+	fmt.Println("2 >= 7 =", b >= a) // 2 >= 7 = false
 
-	fmt.Println("7 + 2 =", a+b) // 7 + 2 = 9
-	fmt.Println("7 - 2 =", a-b) // 7 - 2 = 5
-	fmt.Println("7 * 2 =", a*b) // 7 * 2 = 14
+	age := 20
+	hasTicket := false
+	isAdult := age >= 18
+	canEnter := isAdult && hasTicket                            // Для входа нужны оба условия.
+	fmt.Println("isAdult && hasTicket =", canEnter)             // isAdult && hasTicket = false
+	fmt.Println("isAdult || hasTicket =", isAdult || hasTicket) // isAdult || hasTicket = true
+	fmt.Println("!hasTicket =", !hasTicket)                     // !hasTicket = true
 
-	// При делении целых чисел результат усекается к нулю. Оператор % даёт остаток.
-	fmt.Println("7 / 2 =", a/b)   // 7 / 2 = 3
-	fmt.Println("7 % 2 =", a%b)   // 7 % 2 = 1
-	fmt.Println("-7 / 2 =", -a/b) // -7 / 2 = -3
-	fmt.Println("-7 % 2 =", -a%b) // -7 % 2 = -1
+	// При ложной левой части && правая часть пропускается. Деления на ноль здесь нет.
+	divisor := 0
+	isBigEnough := divisor != 0 && a/divisor > 2
+	fmt.Println("Безопасная проверка =", isBigEnough) // Безопасная проверка = false
 
-	// Преобразуем оба операнда до деления, чтобы получить дробный результат.
-	fmt.Println("7.0 / 2.0 =", float64(a)/float64(b)) // 7.0 / 2.0 = 3.5
+	// if принимает любое выражение типа bool, в том числе готовую переменную.
+	var message string // ""
 
-	// Умножение выполняется раньше сложения. Скобки задают другой порядок.
-	fmt.Println("2 + 3 * 4 =", 2+3*4)     // 2 + 3 * 4 = 14
-	fmt.Println("(2 + 3) * 4 =", (2+3)*4) // (2 + 3) * 4 = 20
+	if canEnter {
+		message = "Вход разрешён"
+	} else {
+		message = "Вход закрыт"
+	}
 
-	// += складывает и записывает результат в ту же переменную.
-	total := 10
-	total += 5
-	fmt.Println("После total += 5:", total) // После total += 5: 15
-
-	// ++ и -- изменяют значение на единицу и записываются отдельными инструкциями.
-	total++
-	fmt.Println("После total++:", total) // После total++: 16
-	total--
-	fmt.Println("После total--:", total) // После total--: 15
+	fmt.Println(message) // Вход закрыт
 }
