@@ -2,45 +2,43 @@ package main
 
 import "fmt"
 
+// Без явного типа литерал 3 задаёт нетипизированную константу.
+const defaultRetries = 3
+const appName string = "Go"
+
+const (
+	secondsPerMinute int = 60
+	// Константное выражение вычисляется при компиляции.
+	secondsPerHour = 60 * secondsPerMinute
+)
+
+const (
+	smallLimit  int = 1
+	mediumLimit     // Повторяет тип int и выражение 1.
+	largeLimit  int = 3
+	maxLimit        // Повторяет тип int и выражение 3.
+)
+
+const (
+	// iota равно индексу объявления в блоке, начиная с нуля.
+	// Выражение 1 << iota повторяется с новым значением iota в каждой строке.
+	readMask    = 1 << iota // 1 << 0 = 1
+	writeMask               // 1 << 1 = 2
+	executeMask             // 1 << 2 = 4
+)
+
 func main() {
-	// По литералам Go выводит типы int, float64, string и bool.
-	// Формат %T показывает тип, а %v — значение.
-	count := 127
-	price := 32.32
-	label := "Привет"
-	isReady := true
+	// Константы можно объявлять и внутри функции.
+	const pageSize = 20
+	fmt.Println(appName, pageSize) // Go 20
 
-	fmt.Printf("count: %T = %v\n", count, count)                         // count: int = 127
-	fmt.Printf("price: %T = %v\n", price, price)                         // price: float64 = 32.32
-	fmt.Printf("label: %T = %q (bytes: %d)\n", label, label, len(label)) // label: string = "Привет" (bytes: 12)
-	fmt.Printf("isReady: %T = %v\n", isReady, isReady)                   // isReady: bool = true
+	// Нетипизированная константа подходит обоим типам, потому что 3 помещается в каждый из них.
+	var retries8 uint8 = defaultRetries
+	var retries64 int64 = defaultRetries
+	fmt.Printf("%T %d, %T %d\n", retries8, retries8, retries64, retries64) // uint8 3, int64 3
 
-	// int8 хранит значения от -128 до 127, а uint8 — от 0 до 255.
-	// byte — другое имя для uint8. rune — другое имя для int32.
-	var signed int8 = -128
-	var octet byte = 255
-	letter := 'Ж'                                                // Символьный литерал имеет тип rune по умолчанию.
-	fmt.Printf("signed: %T = %v\n", signed, signed)              // signed: int8 = -128
-	fmt.Printf("octet: %T = %v\n", octet, octet)                 // octet: uint8 = 255
-	fmt.Printf("letter: %T = %c (%U)\n", letter, letter, letter) // letter: int32 = Ж (U+0416)
-
-	// float32 нужно указать явно, иначе для 0.5 будет выведен float64.
-	// В комплексном числе 2 + 3i действительная часть равна 2, мнимая — 3.
-	var fraction float32 = 0.5
-	var smallComplex complex64 = 2 + 3i
-	largeComplex := 2 + 3i                                            // Тип по умолчанию — complex128.
-	fmt.Printf("fraction: %T = %v\n", fraction, fraction)             // fraction: float32 = 0.5
-	fmt.Printf("smallComplex: %T = %v\n", smallComplex, smallComplex) // smallComplex: complex64 = (2+3i)
-	fmt.Printf("largeComplex: %T = %v\n", largeComplex, largeComplex) // largeComplex: complex128 = (2+3i)
-
-	// При целочисленном делении дробная часть отбрасывается.
-	// Преобразуем count в float64 до деления, чтобы получить 63.5.
-	fmt.Printf("count / 2 = %v, float64(count) / 2 = %v\n", count/2, float64(count)/2)
-	// count / 2 = 63, float64(count) / 2 = 63.5
-
-	// Переменные без начального значения получают нулевое значение своего типа.
-	var number int
-	var text string
-	var flag bool
-	fmt.Printf("zero values: %v, %q, %v\n", number, text, flag) // zero values: 0, "", false
+	// const retries = retries8 // Ошибка компиляции: retries8 — переменная.
+	fmt.Println(secondsPerMinute, secondsPerHour)              // 60 3600
+	fmt.Println(smallLimit, mediumLimit, largeLimit, maxLimit) // 1 1 3 3
+	fmt.Println(readMask, writeMask, executeMask)              // 1 2 4
 }
