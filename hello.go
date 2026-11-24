@@ -32,4 +32,16 @@ func main() {
 	fmt.Println("После total++:", total) // После total++: 16
 	total--
 	fmt.Println("После total--:", total) // После total--: 15
+
+	// Минимальное знаковое значение при делении на -1 остаётся тем же.
+	var minimum int8 = -128
+	fmt.Println("Особый случай int8:", minimum/-1, minimum%-1) // Особый случай int8: -128 0
+
+	var limit uint8 = 255
+	fmt.Println("Переполнение uint8:", limit+1) // Переполнение uint8: 0
+
+	// Значения в переменных float64 уже округлены до двоичной дроби.
+	x, y := 0.1, 0.2
+	fmt.Println("Равенство констант:", 0.1+0.2 == 0.3) // Равенство констант: true
+	fmt.Println("Равенство float64:", x+y == 0.3)      // Равенство float64: false
 }
