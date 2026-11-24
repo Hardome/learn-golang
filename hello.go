@@ -2,43 +2,34 @@ package main
 
 import "fmt"
 
-// Без явного типа литерал 3 задаёт нетипизированную константу.
-const defaultRetries = 3
-const appName string = "Go"
-
-const (
-	secondsPerMinute int = 60
-	// Константное выражение вычисляется при компиляции.
-	secondsPerHour = 60 * secondsPerMinute
-)
-
-const (
-	smallLimit  int = 1
-	mediumLimit     // Повторяет тип int и выражение 1.
-	largeLimit  int = 3
-	maxLimit        // Повторяет тип int и выражение 3.
-)
-
-const (
-	// iota равно индексу объявления в блоке, начиная с нуля.
-	// Выражение 1 << iota повторяется с новым значением iota в каждой строке.
-	readMask    = 1 << iota // 1 << 0 = 1
-	writeMask               // 1 << 1 = 2
-	executeMask             // 1 << 2 = 4
-)
-
 func main() {
-	// Константы можно объявлять и внутри функции.
-	const pageSize = 20
-	fmt.Println(appName, pageSize) // Go 20
+	a, b := 7, 2
 
-	// Нетипизированная константа подходит обоим типам, потому что 3 помещается в каждый из них.
-	var retries8 uint8 = defaultRetries
-	var retries64 int64 = defaultRetries
-	fmt.Printf("%T %d, %T %d\n", retries8, retries8, retries64, retries64) // uint8 3, int64 3
+	fmt.Println("7 + 2 =", a+b) // 7 + 2 = 9
+	fmt.Println("7 - 2 =", a-b) // 7 - 2 = 5
+	fmt.Println("7 * 2 =", a*b) // 7 * 2 = 14
 
-	// const retries = retries8 // Ошибка компиляции: retries8 — переменная.
-	fmt.Println(secondsPerMinute, secondsPerHour)              // 60 3600
-	fmt.Println(smallLimit, mediumLimit, largeLimit, maxLimit) // 1 1 3 3
-	fmt.Println(readMask, writeMask, executeMask)              // 1 2 4
+	// При делении целых чисел результат усекается к нулю. Оператор % даёт остаток.
+	fmt.Println("7 / 2 =", a/b)   // 7 / 2 = 3
+	fmt.Println("7 % 2 =", a%b)   // 7 % 2 = 1
+	fmt.Println("-7 / 2 =", -a/b) // -7 / 2 = -3
+	fmt.Println("-7 % 2 =", -a%b) // -7 % 2 = -1
+
+	// Преобразуем оба операнда до деления, чтобы получить дробный результат.
+	fmt.Println("7.0 / 2.0 =", float64(a)/float64(b)) // 7.0 / 2.0 = 3.5
+
+	// Умножение выполняется раньше сложения. Скобки задают другой порядок.
+	fmt.Println("2 + 3 * 4 =", 2+3*4)     // 2 + 3 * 4 = 14
+	fmt.Println("(2 + 3) * 4 =", (2+3)*4) // (2 + 3) * 4 = 20
+
+	// += складывает и записывает результат в ту же переменную.
+	total := 10
+	total += 5
+	fmt.Println("После total += 5:", total) // После total += 5: 15
+
+	// ++ и -- изменяют значение на единицу и записываются отдельными инструкциями.
+	total++
+	fmt.Println("После total++:", total) // После total++: 16
+	total--
+	fmt.Println("После total--:", total) // После total--: 15
 }
