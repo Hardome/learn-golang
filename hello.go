@@ -46,6 +46,21 @@ func sum(numbers ...int) int {
 	return total
 }
 
+// При вызове с values... numbers использует те же элементы, что и values.
+func setFirst(replacement int, numbers ...int) {
+	if len(numbers) > 0 {
+		numbers[0] = replacement
+	}
+}
+
+// Отложенное замыкание меняет уже присвоенный именованный результат.
+func resultAfterDefer() (result int) {
+	defer func() {
+		result++
+	}()
+	return 10
+}
+
 func main() {
 	// Строковый литерал и результат другой функции можно передать как аргумент.
 	saySomething("Привет из функции")    // Вывод: Привет из функции
@@ -69,4 +84,8 @@ func main() {
 	fmt.Println("Сумма без аргументов:", sum())    // Вывод: Сумма без аргументов: 0
 	values := []int{4, 5}
 	fmt.Println("Сумма элементов среза:", sum(values...)) // Вывод: Сумма элементов среза: 9
+
+	setFirst(7, values...)
+	fmt.Println("Срез после вызова:", values)                 // Вывод: Срез после вызова: [7 5]
+	fmt.Println("Результат после defer:", resultAfterDefer()) // Вывод: Результат после defer: 11
 }
