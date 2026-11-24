@@ -41,4 +41,15 @@ func main() {
 	fmt.Println(secondsPerMinute, secondsPerHour)              // 60 3600
 	fmt.Println(smallLimit, mediumLimit, largeLimit, maxLimit) // 1 1 3 3
 	fmt.Println(readMask, writeMask, executeMask)              // 1 2 4
+
+	// Промежуточное значение остаётся нетипизированной константой.
+	const huge = 1 << 100
+	fmt.Println("После сдвига:", huge>>98) // После сдвига: 4
+
+	const (
+		_ = iota // Пропускаем 0.
+		firstIndex
+		secondIndex
+	)
+	fmt.Println("Индексы:", firstIndex, secondIndex) // Индексы: 1 2
 }
