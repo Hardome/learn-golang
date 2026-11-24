@@ -3,57 +3,40 @@ package main
 import "fmt"
 
 func main() {
-	a, b, c := 5, 6, 5
-
-	// Если обе проверки дали false, a меньше либо равно и b, и c.
-	var relation string
-
-	if a > b {
-		relation = "a > b"
-	} else if a > c {
-		relation = "a > c"
-	} else {
-		relation = "a <= b и a <= c"
+	// i начинается с 1. Перед каждой итерацией проверяется i <= 4.
+	// После выполнения тела цикла i увеличивается на единицу.
+	sum := 0
+	// [инициализация счетчика]; [условие]; [изменение счетчика]
+	for i := 1; i <= 4; i++ {
+		sum += i
 	}
-	fmt.Println("Сравнение:", relation) // Сравнение: a <= b и a <= c
+	fmt.Println("Сумма от 1 до 4:", sum) // Сумма от 1 до 4: 10
 
-	// remainder доступна в условии и внутри обеих веток.
-	var divisionResult string
-
-	if remainder := 17 % 3; remainder == 0 {
-		divisionResult = "делится на 3"
-	} else {
-		divisionResult = fmt.Sprintf("остаток %d", remainder)
+	// Условие проверяется перед каждой итерацией. Переменная меняется в теле цикла.
+	power := 1
+	for power < 10 {
+		power *= 2
 	}
-	fmt.Println("17 / 3:", divisionResult) // 17 / 3: остаток 2
+	fmt.Println("Первая степень двойки не меньше 10:", power) // Первая степень двойки не меньше 10: 16
 
-	// Три значения показывают обычное совпадение, fallthrough и default.
-	for _, value := range [3]int{4, c, 7} {
-		switch value {
-			case 3, 4:
-				fmt.Printf("switch(%d), case 3 или 4\n", value) // switch(4), case 3 или 4
-			case 5:
-				fmt.Printf("switch(%d), case 5\n", value) // switch(5), case 5
-				fallthrough                               // Выполняет следующий блок, даже если value != 6.
-			case 6:
-				fmt.Printf("switch(%d), case 6\n", value) // switch(5), case 6
-			default:
-				fmt.Printf("switch(%d), default\n", value) // switch(7), default
+	// У for без условия выход задаётся внутри цикла. break завершает текущий цикл.
+	attempts := 0
+	for {
+		attempts++
+		if attempts == 3 {
+			break
 		}
 	}
+	fmt.Println("Количество попыток:", attempts) // Количество попыток: 3
 
-	// Без выражения после switch каждая ветка задаёт условие.
-	temperature := 18
-
-	var weather string
-
-	switch {
-		case temperature < 0:
-			weather = "морозно"
-		case temperature >= 25:
-			weather = "жарко"
-		default:
-			weather = "умеренно"
+	// range даёт индекс и значение. Здесь нужен только элемент, поэтому индекс заменён на _.
+	numbers := [...]int{2, 5, 8, 11}
+	evenSum := 0
+	for _, number := range numbers {
+		if number%2 != 0 {
+			continue // Для нечётного числа сразу переходим к следующей итерации.
+		}
+		evenSum += number
 	}
-	fmt.Println("На улице:", weather) // На улице: умеренно
+	fmt.Println("Сумма чётных элементов:", evenSum) // Сумма чётных элементов: 10
 }
