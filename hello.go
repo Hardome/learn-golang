@@ -1,10 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 func main() {
 	a, b := 7, 2
-	// Каждое сравнение возвращает bool
+	// Результат сравнения — логическое значение.
 	// Сравнение ==
 	fmt.Println("7 == 2 =", a == b) // 7 == 2 = false
 	// Не равно
@@ -41,4 +44,12 @@ func main() {
 	}
 
 	fmt.Println(message) // Вход закрыт
+
+	// Присваивание nil-указателя интерфейсу сохраняет динамический тип *int.
+	var pointer *int
+	var boxed any = pointer
+	fmt.Println("Указатель и интерфейс равны nil:", pointer == nil, boxed == nil) // Указатель и интерфейс равны nil: true false
+
+	nan := math.NaN()
+	fmt.Println("NaN равен себе:", nan == nan) // NaN равен себе: false
 }
