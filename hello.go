@@ -39,4 +39,11 @@ func main() {
 		evenSum += number
 	}
 	fmt.Println("Сумма чётных элементов:", evenSum) // Сумма чётных элементов: 10
+
+	// i объявляется заново на каждой итерации при семантике Go 1.22+.
+	var readIndex []func() int
+	for i := range 3 {
+		readIndex = append(readIndex, func() int { return i })
+	}
+	fmt.Println("Индексы в замыканиях:", readIndex[0](), readIndex[1](), readIndex[2]()) // Индексы в замыканиях: 0 1 2
 }
