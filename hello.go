@@ -1,16 +1,36 @@
-// Программа на языке Go определяется в виде пакетов
-// Программный код должен быть определен в каком-то определенном пакете
-// Поэтому в самом начале файла с помощью оператора package указывается, к какому пакету будет принадлежать файл
-// package main определяет, что данный файл является исполняемым
 package main
 
-// Подключение пакета "fmt"
 import "fmt"
 
-// Главная функция любой программы на Go, по сути входная точка
-func main() {
-	fmt.Println("Hello, world!")
-}
+// Ключевое слово var объявляет переменную
+var someVariable string
 
-// Запустить в терминале с помощью go run hello.go
-// Скомпилировать в терминале с помощью go build hello.go
+// С типом и значением
+var someValue string = "asd"
+
+// Go выводит тип переменной из начального значения.
+var autoType = "string"
+
+// Множественное объявление с типом
+var a, b, c string
+
+var (
+	d string
+	e int = 1
+	f     = 2
+)
+
+func main() {
+	// Краткое объявление := работает только внутри функций.
+	shortVariable := "short"
+
+	shortVariable2, shortVariable3 := "short 2", "short 3"
+
+	fmt.Println(shortVariable, shortVariable2, shortVariable3)
+
+	// Go чувствителен к регистру: name и Name — разные переменные.
+	name := "Go"
+	Name := "Golang"
+	name = "Язык Go"
+	fmt.Println(name, Name)
+}
