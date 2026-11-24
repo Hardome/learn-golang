@@ -22,6 +22,13 @@ func swap(a, b int) (int, int) {
 	return b, a
 }
 
+// Именованные результаты area и perimeter доступны внутри функции как переменные.
+func rectangle(width, height int) (area, perimeter int) {
+	area = width * height
+	perimeter = 2 * (width + height)
+	return // Возвращает текущие значения area и perimeter в этом порядке.
+}
+
 // x получает копию значения аргумента. Изменение x действует только внутри функции.
 func addTwenty(x int) {
 	fmt.Println("x до прибавления:", x)
@@ -47,6 +54,9 @@ func main() {
 
 	left, right := swap(1, 2)
 	fmt.Println("После обмена:", left, right) // Вывод: После обмена: 2 1
+
+	area, perimeter := rectangle(3, 4)
+	fmt.Println("Площадь и периметр:", area, perimeter) // Вывод: Площадь и периметр: 12 14
 
 	a := 8
 	fmt.Println("a до вызова:", a) // Вывод: a до вызова: 8
