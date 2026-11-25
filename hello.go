@@ -1,91 +1,132 @@
 package main
 
-import "fmt"
-
-// message — параметр типа string. Функция печатает строку.
-func saySomething(message string) {
-	fmt.Println(message)
-}
-
-// После списка параметров указан тип результата. return возвращает значение вызывающему коду.
-func greeting(name string) string {
-	return "Привет, " + name + "!"
-}
-
-// a, b int — сокращённая запись для a int, b int.
-func plus(a, b int) int {
-	return a + b
-}
-
-// В скобках перечислены типы двух результатов.
-func swap(a, b int) (int, int) {
-	return b, a
-}
-
-// Именованные результаты area и perimeter доступны внутри функции как переменные.
-func rectangle(width, height int) (area, perimeter int) {
-	area = width * height
-	perimeter = 2 * (width + height)
-	return // Возвращает текущие значения area и perimeter в этом порядке.
-}
-
-// x получает копию значения аргумента. Изменение x действует только внутри функции.
-func addTwenty(x int) {
-	fmt.Println("x до прибавления:", x)
-	x += 20
-	fmt.Println("x после прибавления:", x)
-}
-
-// ...int позволяет передать любое число аргументов типа int.
-// Внутри функции numbers — срез []int, по которому можно пройти через range.
-func sum(numbers ...int) int {
-	total := 0
-	for _, number := range numbers {
-		total += number
-	}
-	return total
-}
-
-// При вызове с values... numbers использует те же элементы, что и values.
-func setFirst(replacement int, numbers ...int) {
-	if len(numbers) > 0 {
-		numbers[0] = replacement
-	}
-}
-
-// Отложенное замыкание меняет уже присвоенный именованный результат.
-func resultAfterDefer() (result int) {
-	defer func() {
-		result++
-	}()
-	return 10
-}
+import (
+	"cmp"
+	"fmt"
+	"slices"
+)
 
 func main() {
-	// Строковый литерал и результат другой функции можно передать как аргумент.
-	saySomething("Привет из функции")    // Вывод: Привет из функции
-	saySomething(greeting("Анна"))       // Вывод: Привет, Анна!
-	fmt.Println("Сложение:", plus(3, 4)) // Вывод: Сложение: 7
+	// Литерал создаёт функциональное значение, которое можно вызвать через переменную.
+	double := func(value int) int { return value * 2 }
+	fmt.Println(double(4)) // 8
 
-	left, right := swap(1, 2)
-	fmt.Println("После обмена:", left, right) // Вывод: После обмена: 2 1
+	// Аргументы после тела сразу вызывают функцию.
+	fmt.Println(func(left, right int) int { return left + right }(3, 4)) // 7
 
-	area, perimeter := rectangle(3, 4)
-	fmt.Println("Площадь и периметр:", area, perimeter) // Вывод: Площадь и периметр: 12 14
+	showSort()
+	showCapture()
+	showLoopCapture()
+	showDeferredValues()    // конец, затем начало (две строки)
+	fmt.Println(adjusted()) // 5
+	showGoroutineArgument()
+	showRecursion()
+	showNilFunction()
+}
 
-	a := 8
-	fmt.Println("a до вызова:", a) // Вывод: a до вызова: 8
-	addTwenty(a)
-	// Вывод: x до прибавления: 8
-	// Вывод: x после прибавления: 28
-	fmt.Println("a после вызова:", a) // Вывод: a после вызова: 8
+func showSort() {
+	type job struct {
+		name     string
+		priority int
+	}
+	jobs := []job{{name: "backup", priority: 2}, {name: "deploy", priority: 1}}
+	// Переданный компаратор задаёт порядок сортировки среза на месте.
+	slices.SortFunc(jobs, func(left, right job) int {
+		return cmp.Compare(left.priority, right.priority)
+	})
+	fmt.Println(jobs) // [{deploy 1} {backup 2}]
+}
 
-	fmt.Println("Сумма трёх чисел:", sum(1, 2, 3)) // Вывод: Сумма трёх чисел: 6
-	fmt.Println("Сумма без аргументов:", sum())    // Вывод: Сумма без аргументов: 0
-	values := []int{4, 5}
-	fmt.Println("Сумма элементов среза:", sum(values...)) // Вывод: Сумма элементов среза: 9
+func showCapture() {
+	label := "до"
+	readLabel := func() string { return label }
+	// Замыкание читает ту же переменную после присваивания.
+	label = "после"
+	fmt.Println(readLabel()) // после
 
-	setFirst(7, values...)
-	fmt.Println("Срез после вызова:", values)                 // Вывод: Срез после вызова: [7 5]
-	fmt.Println("Результат после defer:", resultAfterDefer()) // Вывод: Результат после defer: 11
+	first := newCounter(0)
+	sameCounter := first
+	second := newCounter(10)
+	// Копия функции разделяет состояние с оригиналом. У второго счётчика своё состояние.
+	fmt.Println(first(), sameCounter(), second()) // 1 2 11
+}
+
+func newCounter(start int) func() int {
+	// Параметр start остаётся доступным после возврата из newCounter.
+	return func() int {
+		start++
+		return start
+	}
+}
+
+func showLoopCapture() {
+	values := []int{1, 2, 3}
+
+	// Начиная с Go 1.22, := объявляет свою переменную на каждой итерации.
+	var perIteration []func() int
+	for _, value := range values {
+		perIteration = append(perIteration, func() int { return value })
+	}
+	fmt.Println(perIteration[0](), perIteration[1](), perIteration[2]()) // 1 2 3
+
+	// При = все итерации присваивают значения одной внешней переменной.
+	var shared []func() int
+	var snapshots []func() int
+	var value int
+	for _, value = range values {
+		shared = append(shared, func() int { return value })
+
+		// Копия в теле даёт отдельную переменную на каждой итерации.
+		iterationValue := value
+		snapshots = append(snapshots, func() int { return iterationValue })
+	}
+	fmt.Println(shared[0](), shared[1](), shared[2]())          // 3 3 3
+	fmt.Println(snapshots[0](), snapshots[1](), snapshots[2]()) // 1 2 3
+}
+
+func showDeferredValues() {
+	state := "начало"
+	// Аргумент вычисляется сразу. Отложенные вызовы выполняются в обратном порядке.
+	defer func(saved string) { fmt.Println(saved) }(state) // начало (выводится вторым)
+	defer func() { fmt.Println(state) }()                  // конец (выводится первым)
+	state = "конец"
+}
+
+func adjusted() (result int) {
+	// return сначала присваивает результату 4, затем замыкание увеличивает его.
+	defer func() { result++ }()
+	return 4
+}
+
+func showGoroutineArgument() {
+	result := make(chan int)
+	value := 7
+	// Параметр получает значение до запуска горутины. Канал позволяет дождаться ответа.
+	go func(input int) { result <- input * 2 }(value)
+	value = 9
+	fmt.Println(<-result) // 14
+}
+
+func showRecursion() {
+	// Предварительное объявление вводит имя в область видимости тела литерала.
+	// Этот пример рассчитан на малые неотрицательные числа.
+	var factorial func(int) int
+	factorial = func(value int) int {
+		if value < 2 {
+			return 1
+		}
+		return value * factorial(value-1)
+	}
+	fmt.Println(factorial(5)) // 120
+}
+
+func showNilFunction() {
+	// Функция имеет нулевое значение nil. Интерфейс при этом содержит динамический тип func().
+	var callback func()
+	var boxed any = callback
+	fmt.Println(callback == nil, boxed == nil) // true false
+
+	// callback()                      // Паника при вызове nil.
+	// fmt.Println(callback == callback) // Ошибка компиляции: функции сравнимы только с nil.
+	// fmt.Println(boxed == boxed)       // Паника: динамический тип func() несравним.
 }
