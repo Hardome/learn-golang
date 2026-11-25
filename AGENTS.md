@@ -12,8 +12,8 @@ Cover the topic end to end at senior interview depth. Explain language guarantee
 trade-offs, and all relevant edge cases. Identify implementation details and version-dependent behavior explicitly when
 they affect the result.
 
-- `README.md` contains the theory, explanations, and expected console output in Russian. Keep it focused on the current
-  topic and link to related lesson branches where helpful.
+- `README.md` contains the theory and explanations in Russian. Keep it focused on the current topic and link to related
+  lesson branches where helpful.
 - `hello.go` contains runnable, idiomatic examples in `package main`. Use descriptive Go identifiers and Russian
   comments to explain each example, including edge cases. Show exact output beside the relevant calls. Document examples
   that fail to compile or panic in comments or in the README.
@@ -44,7 +44,7 @@ Run these commands from the repository root on the lesson branch:
 | `gofmt -w hello.go` | Apply standard Go formatting, including tab indentation. |
 | `go vet hello.go` | Check the example for common mistakes. |
 
-Compare the program's output with the README and the comments near the example calls. The generated executables are
+Compare the program's output with the comments near the example calls in `hello.go`. The generated executables are
 ignored by Git.
 
 There is no `go.mod` or coverage target. If a lesson needs regression tests, use Go's `testing` package in
