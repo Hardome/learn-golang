@@ -110,11 +110,14 @@ fmt.Println(callback == nil, boxed == nil) // true false
 ## Источники
 
 - [Go Language Specification — Function literals](https://go.dev/ref/spec#Function_literals)
+- [Go Language Specification — Assignability](https://go.dev/ref/spec#Assignability)
+- [Go Language Specification — Built-in functions](https://go.dev/ref/spec#Built-in_functions)
 - [Go Language Specification — Function types](https://go.dev/ref/spec#Function_types)
 - [Go Language Specification — Declarations and scope](https://go.dev/ref/spec#Declarations_and_scope)
 - [Go Language Specification — Calls](https://go.dev/ref/spec#Calls)
 - [Go Language Specification — Comparison operators](https://go.dev/ref/spec#Comparison_operators)
-- [slices.SortFunc](https://pkg.go.dev/slices#SortFunc) · [slices.SortStableFunc](https://pkg.go.dev/slices#SortStableFunc)
+- [slices.SortFunc](https://pkg.go.dev/slices#SortFunc)
+- [slices.SortStableFunc](https://pkg.go.dev/slices#SortStableFunc)
 - [cmp.Compare](https://pkg.go.dev/cmp#Compare)
 
 [lesson-012]: https://github.com/Hardome/learn-golang/tree/lesson-012-functions-and-parameters
