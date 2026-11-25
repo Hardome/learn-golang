@@ -20,11 +20,10 @@ func main() {
 // outer возвращает функцию, которая при каждом вызове меняет ту же n.
 func outer() func() {
 	n := 5
-	inner := func() {
+	return func() {
 		n++
 		fmt.Println(n)
 	}
-	return inner
 }
 
 func showMultiplier() {
