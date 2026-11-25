@@ -36,8 +36,7 @@
 ## Условие в `if`
 
 `if` выполняет первый блок при `true`, а блок `else` — при `false`. В примере право войти проверяется выражением
-`isAdult && hasTicket`. Возраст подходит, но значение `hasTicket` равно `false`, поэтому программа выводит «Вход
-закрыт».
+`isAdult && hasTicket`. Возраст подходит, но значение `hasTicket` равно `false`, поэтому выполняется блок `else`.
 
 ## Сравнимость и пограничные случаи
 
@@ -57,22 +56,6 @@
 ## Запуск
 
 Выполните `go run hello.go` из каталога урока.
-
-```text
-7 == 2 = false
-7 != 2 = true
-7 < 2 = false
-7 <= 7 = true
-7 > 2 = true
-2 >= 7 = false
-isAdult && hasTicket = false
-isAdult || hasTicket = true
-!hasTicket = true
-Безопасная проверка = false
-Вход закрыт
-Указатель и интерфейс равны nil: true false
-NaN равен себе: false
-```
 
 ## Источники
 
