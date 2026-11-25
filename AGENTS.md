@@ -12,8 +12,10 @@ Cover the topic end to end at senior interview depth. Explain language guarantee
 trade-offs, and all relevant edge cases. Identify implementation details and version-dependent behavior explicitly when
 they affect the result.
 
-- `README.md` contains the theory and explanations in Russian. Keep it focused on the current topic and link to related
-  lesson branches where helpful.
+- `README.md` explains the lesson in Russian and stands on its own. Introduce the topic up front and include the
+  context, definitions, and short examples readers need to understand it without opening `hello.go`.
+- Link to `hello.go` as a runnable companion for practice. Give the explanations in `README.md` itself.
+- Keep the README focused on the current topic. Link to related lesson branches where helpful.
 - `hello.go` contains runnable, idiomatic examples in `package main`. Use descriptive Go identifiers and Russian
   comments to explain each example, including edge cases. Show exact output beside the relevant calls. Document examples
   that fail to compile or panic in comments or in the README.
