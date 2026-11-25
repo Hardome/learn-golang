@@ -9,6 +9,9 @@ type Point struct {
 func main() {
 	showAddress()
 	showNilAndNew()
+	showPointerToPointer()
+	showPointerArray()
+	showPointerCopy()
 	showPointerParameters()
 	showAddressableValues()
 
@@ -17,25 +20,76 @@ func main() {
 }
 
 func showAddress() {
+	var x int = 4
+	var p *int
+	// &x имеет тип *int. Конкретный адрес зависит от запуска.
+	p = &x
+	fmt.Printf("Адрес: %p\n", p) // Например: Адрес: 0xc000010100
+	fmt.Println("Значение:", *p) // Значение: 4
+
+	// Разыменование позволяет записать новое значение в x.
+	*p = 25
+	fmt.Println(x) // 25
+
+	// При коротком объявлении тип *float64 выводится из &temperature.
+	temperature := 2.3
+	reading := &temperature
+	fmt.Println(*reading) // 2.3
+}
+
+func showNilAndNew() {
+	var p *int
+	fmt.Println(p == nil) // true
+	// fmt.Println(*p) // Паника: разыменование nil.
+	if p != nil {
+		fmt.Println(*p) // Эта строка пропускается.
+	}
+
+	// Интерфейс хранит динамический тип *int даже при нулевом значении указателя.
+	var boxed any = p
+	fmt.Println(boxed == nil) // false
+
+	// new(int) возвращает адрес новой переменной со значением 0.
+	p = new(int)
+	fmt.Println(*p) // 0
+	*p = 8
+	fmt.Println(*p) // 8
+}
+
+func showPointerToPointer() {
+	number := 9
+	p := &number
+	pp := &p // Адрес переменной p, тип **int.
+
+	fmt.Println(pp == &p, *pp == p, **pp) // true true 9
+
+	// Через *pp можно поменять сам p. Теперь он указывает на other.
+	other := 20
+	*pp = &other
+	fmt.Println(*p, number) // 20 9
+}
+
+func showPointerArray() {
+	first, second, fourth := 1, 2, 4
+	pointers := [4]*int{&first, &second, nil, &fourth}
+	fmt.Println(pointers[2] == nil) // true
+
+	for _, p := range pointers {
+		// Пропускаем пустой элемент перед разыменованием.
+		if p != nil {
+			fmt.Println(*p) // 1, 2, 4 на отдельных строках.
+		}
+	}
+}
+
+func showPointerCopy() {
 	score := 10
 	pointer := &score
-	fmt.Println(*pointer) // 10
 
 	// Присваивание копирует адрес. Оба указателя обращаются к score.
 	alias := pointer
 	*alias = 15
 	fmt.Println(score, *pointer, pointer == alias) // 15 15 true
-}
-
-func showNilAndNew() {
-	var pointer *int
-	var boxed any = pointer
-	// Интерфейс хранит динамический тип *int даже при нулевом значении указателя.
-	fmt.Println(pointer == nil, boxed == nil) // true false
-	// fmt.Println(*pointer) // Паника: разыменование nil.
-
-	pointer = new(int)
-	fmt.Println(*pointer) // 0
 }
 
 func showPointerParameters() {
