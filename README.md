@@ -50,14 +50,7 @@ fmt.Println(name, Name)
 
 ## Запуск
 
-Запустите `go run hello.go`. Ожидаемый вывод:
-
-```text
-short short 2 short 3
-Язык Go Golang
-Внутренний count: 9
-Внешний count и next: 2 3
-```
+Запустите `go run hello.go`.
 
 ## Источники
 
