@@ -58,24 +58,7 @@
 
 ## Запуск
 
-Выполните `go run hello.go` из каталога урока. Ожидаемый вывод приведён ниже.
-
-```text
-count: int = 127
-price: float64 = 32.32
-label: string = "Привет" (bytes: 12)
-isReady: bool = true
-signed: int8 = -128
-octet: uint8 = 255
-letter: int32 = Ж (U+0416)
-fraction: float32 = 0.5
-smallComplex: complex64 = (2+3i)
-largeComplex: complex128 = (2+3i)
-count / 2 = 63, float64(count) / 2 = 63.5
-zero values: 0, "", false
-Сумма после преобразования: 30
-Байт строки: ff
-```
+Выполните `go run hello.go` из каталога урока.
 
 ## Источники
 
