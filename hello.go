@@ -3,12 +3,43 @@ package main
 import "fmt"
 
 func main() {
+	next := outer()
+	next() // 6
+	next() // 7
+	next() // 8
+
+	showMultiplier()
 	showCapture()
 	showLoopCapture()
 	showDeferredValues()    // конец, затем начало (две строки)
 	fmt.Println(adjusted()) // 5
 	showGoroutineArgument()
 	showRecursion()
+}
+
+// outer возвращает функцию, которая при каждом вызове меняет ту же n.
+func outer() func() {
+	n := 5
+	inner := func() {
+		n++
+		fmt.Println(n)
+	}
+	return inner
+}
+
+func showMultiplier() {
+	// Первый вызов задаёт множитель. Последующие передают числа для умножения.
+	timesFive := multiply(5)
+	fmt.Println(timesFive(6))   // 30
+	fmt.Println(timesFive(5))   // 25
+	fmt.Println(multiply(5)(6)) // 30
+}
+
+func multiply(factor int) func(int) int {
+	// Вложенная функция использует параметр внешней функции.
+	return func(value int) int {
+		return factor * value
+	}
 }
 
 func showCapture() {
