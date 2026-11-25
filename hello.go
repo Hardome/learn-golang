@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 // Все пять элементов получают нулевое значение типа int.
-var numbers [5]int
+var numbers [5]int // {0, 0, 0, 0, 0}
 var values = [5]int{1, 2, 3, 4, 5}
 
 func main() {
