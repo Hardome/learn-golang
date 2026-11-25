@@ -22,6 +22,8 @@ they affect the result.
 
 Limit Markdown source lines to 120 characters, including `README.md` and `AGENTS.md`.
 
+Keep each list item or paragraph focused on one point. Use separate paragraphs or headings for distinct concepts.
+
 ## Official Sources
 
 Add an `Источники` section to every lesson README. Use official sources only and link directly to the sections or API
