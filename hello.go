@@ -13,6 +13,7 @@ func main() {
 	showPointerArray()
 	showPointerCopy()
 	showPointerParameters()
+	showPointerResults()
 	showAddressableValues()
 
 	// Адрес локальной переменной остаётся пригодным после возврата из функции.
@@ -93,31 +94,60 @@ func showPointerCopy() {
 }
 
 func showPointerParameters() {
-	score, backup := 10, 99
-	pointer := &score
+	number := 5
+	fmt.Println(number) // 5
 
-	increment(pointer)
-	fmt.Println(score) // 11
+	// Параметр получает копию числа. Присваивание не меняет number.
+	squareValue(number)
+	fmt.Println(number) // 5
 
+	fmt.Println(number) // 5
+	// Параметр получает копию адреса. Запись через него меняет number.
+	squareThroughPointer(&number)
+	fmt.Println(number) // 25
+
+	backup := 99
+	pointer := &number
 	// Присваивание параметру в redirect не меняет переменную pointer.
 	redirect(pointer, &backup)
-	fmt.Println(*pointer) // 11
+	fmt.Println(*pointer) // 25
 	pointer = redirect(pointer, &backup)
 	fmt.Println(*pointer) // 99
 
 	// slot хранит адрес самой переменной pointer и имеет тип **int.
 	slot := &pointer
-	*slot = &score
-	fmt.Println(*pointer) // 11
+	*slot = &number
+	fmt.Println(*pointer) // 25
 }
 
-func increment(target *int) {
-	*target = *target + 1
+func squareValue(value int) {
+	value = value * value
+	fmt.Println("Внутри squareValue:", value) // Внутри squareValue: 25
+}
+
+func squareThroughPointer(value *int) {
+	*value = (*value) * (*value)
 }
 
 func redirect(target, replacement *int) *int {
 	target = replacement
 	return target
+}
+
+func showPointerResults() {
+	// Каждый вызов создаёт отдельную переменную типа int.
+	p1 := createPointer(7)
+	p2 := createPointer(10)
+	p3 := createPointer(28)
+	fmt.Println("p1:", *p1) // p1: 7
+	fmt.Println("p2:", *p2) // p2: 10
+	fmt.Println("p3:", *p3) // p3: 28
+}
+
+func createPointer(value int) *int {
+	pointer := new(int)
+	*pointer = value
+	return pointer
 }
 
 func showAddressableValues() {
