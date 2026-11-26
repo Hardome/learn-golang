@@ -2,106 +2,213 @@ package main
 
 import "fmt"
 
-type mile uint
-type kilometer uint
-type mileAlias = uint
-type routeMile = mile
+type person struct {
+	name string
+	age  int
+}
 
-type BinaryOp = func(int, int) int
-type NamedBinaryOp func(int, int) int
+type account struct {
+	login   string
+	profile person
+}
 
-// Обобщённый псевдоним доступен с Go 1.24.
-type set[K comparable] = map[K]bool
+type member struct {
+	login string
+	person
+}
+
+type node struct {
+	value int
+	next  *node
+}
+
+// type badNode struct{ next badNode } // Ошибка компиляции: рекурсия через поле по значению.
 
 func main() {
-	showDistanceTypes()
-	showAliasIdentity()
-	showOperations()
-	showGenericAlias()
+	showInitialization()
+	showUnnamedStructs()
+	showPointers()
+	showCopies()
+	showComparison()
+	showEmbedding()
+	showLinkedList()
 }
 
-func showDistanceTypes() {
-	// Нетипизированная константа 5 представима в mile, а арифметика работает как у uint.
-	var distance mile = 5
-	fmt.Println(distance) // 5
-	distance += 5
-	fmt.Println(distance)     // 10
-	distanceToEnemy(distance) // 10 миль до противника
+func showInitialization() {
+	// Каждое поле получает нулевое значение своего типа.
+	var zero person
+	fmt.Printf("%q %d\n", zero.name, zero.age) // "" 0
 
-	var routeDistance routeMile = distance
-	distanceToEnemy(routeDistance) // 10 миль до противника
+	tom := person{"Tom", 23}
+	alice := person{age: 23, name: "Alice"}
+	bob := person{name: "Bob"}
+	var empty = person{}
+	fmt.Println(tom, alice, bob, empty) // {Tom 23} {Alice 23} {Bob 0} { 0}
+	// _ = person{"Tom"} // Ошибка компиляции: позиционный литерал должен задать все поля.
+	// _ = person{"Tom", age: 23} // Ошибка компиляции: нельзя смешивать формы литерала.
 
-	// Обе переменные имеют тип uint, поэтому присваивание возможно в обе стороны.
-	var raw uint = 10
-	var aliasDistance mileAlias = raw
-	raw = aliasDistance
-	fmt.Println(raw, aliasDistance) // 10 10
+	tom.age = 38
+	fmt.Println(tom.name, tom.age) // Tom 38
 
-	km := kilometer(16)
-	// distanceToEnemy(km) // Ошибка компиляции: kilometer и mile — разные типы.
-	// distanceToEnemy(raw) // Ошибка компиляции: uint и mile — разные типы.
-	// distanceToEnemy(-1) // Ошибка компиляции: -1 не представимо в mile.
-	distanceToEnemy(mile(raw)) // 10 миль до противника
-	// Преобразование типа не переводит километры в мили.
-	fmt.Println(mile(km)) // 16
+	// Этот тип объявлен в блоке функции. Два поля одного типа записаны вместе.
+	type employee struct {
+		name, company string
+		age           int
+	}
+	var employeeTom employee = employee{name: "Tom", company: "Acme", age: 38}
+	fmt.Println(employeeTom.company) // Acme
 }
 
-func distanceToEnemy(distance mile) {
-	fmt.Println(distance, "миль до противника")
+func showUnnamedStructs() {
+	// Неименованный тип можно записать при объявлении переменной.
+	var tom struct {
+		name string
+		age  int
+	}
+	tom.name = "Tom"
+	tom.age = 23
+
+	bob := struct {
+		name string
+		age  int
+	}{
+		name: "Bob",
+		age:  41,
+	}
+	// Базовые типы совпадают, а тип bob неименованный.
+	var named person = bob
+	fmt.Println(tom.name, tom.age, named.name, named.age) // Tom 23 Bob 41
 }
 
-func (distance mile) Double() mile {
-	return distance * 2
+func showPointers() {
+	tom := person{name: "Tom", age: 22}
+	var pointer *person = &tom
+	// Селектор автоматически разыменовывает указатель при обращении к полю.
+	fmt.Println(pointer.name, (*pointer).age) // Tom 22
+	pointer.age = 23
+	fmt.Println(tom.age) // 23
+	age := &tom.age
+	*age = 35
+	fmt.Println(tom.age) // 35
+
+	// new(person) возвращает указатель на новую переменную с нулевым значением.
+	zero := new(person)
+	fmt.Println(*zero) // { 0}
+	zero.name = "Tom"
+	zero.age = 41
+	fmt.Println(*zero) // {Tom 41}
+
+	alice := &person{name: "Alice", age: 23}
+	fmt.Println(*alice) // {Alice 23}
+
+	anonymous := new(struct {
+		name, company string
+		age           int
+	})
+	anonymous.name = "Bob"
+	anonymous.company = "Acme"
+	anonymous.age = 46
+	fmt.Println(*anonymous) // {Bob Acme 46}
+
+	// var missing *person
+	// fmt.Println(missing.age) // Паника: чтение поля через nil.
+
+	// Запись в карту обновляет целое значение. Поле элемента карты неадресуемо.
+	people := map[string]person{"tom": tom}
+	// people["tom"].age++ // Ошибка компиляции: поле элемента карты неадресуемо.
+	updated := people["tom"]
+	updated.age++
+	people["tom"] = updated
+	fmt.Println(people["tom"].age, tom.age) // 36 35
 }
 
-func showAliasIdentity() {
-	// У псевдонима тот же набор методов и тот же динамический тип.
-	var distance routeMile = 5
-	fmt.Println(distance.Double()) // 10
+func showCopies() {
+	tom := person{name: "Tom", age: 41}
+	copyOfTom := tom
+	copyOfTom.age = 18
+	fmt.Println(tom.age, copyOfTom.age) // 41 18
 
-	value := any(distance)
-	_, isMile := value.(mile)
-	_, isUint := value.(uint)
-	fmt.Println(isMile, isUint) // true false
+	older := nextBirthday(tom)
+	fmt.Println(tom.age, older.age) // 41 42
+	incrementAge(&tom)
+	fmt.Println(tom.age) // 42
 
-	// Срезы идентичны, так как идентичны их типы элементов.
-	var route []routeMile = []mile{5, 10}
-	fmt.Println(route) // [5 10]
-	// _ = []uint(route) // Ошибка компиляции: mile и uint — разные типы элементов.
+	type profile struct {
+		owner person
+		tags  []string
+	}
+	original := profile{owner: tom, tags: []string{"go"}}
+	copied := original
+	copied.owner.age = 18
+	// Поле owner скопировано по значению. Оба среза по-прежнему используют общий массив.
+	copied.tags[0] = "struct"
+	fmt.Println(original.owner.age, copied.owner.age, original.tags[0]) // 42 18 struct
+
+	copied.tags = []string{"copy"}
+	fmt.Println(original.tags[0], copied.tags[0]) // struct copy
 }
 
-func showOperations() {
-	// Псевдоним и исходная сигнатура обозначают один тип функции.
-	var rawOperation func(int, int) int = add
-	action(10, 25, rawOperation) // 35
-	var operation BinaryOp = rawOperation
-	action(10, 35, operation) // 45
-
-	// NamedBinaryOp — отдельный тип. Присваивание допустимо, так как тип add неименованный.
-	var namedOperation NamedBinaryOp = add
-	action(10, 35, namedOperation) // 45
-
-	// Два определённых функциональных типа требуют явного преобразования.
-	type anotherOperation func(int, int) int
-	// var other anotherOperation = namedOperation // Ошибка компиляции: оба типа именованные.
-	other := anotherOperation(namedOperation)
-	action(2, 3, other) // 5
-
-	var unset BinaryOp
-	fmt.Println(unset == nil) // true
-	// action(10, 35, unset) // Паника: вызов функции со значением nil.
+func nextBirthday(value person) person {
+	value.age++
+	return value
 }
 
-func action(left, right int, op BinaryOp) {
-	fmt.Println(op(left, right))
+func incrementAge(value *person) {
+	value.age++
 }
 
-func add(left, right int) int {
-	return left + right
+func showComparison() {
+	tom := person{name: "Tom", age: 41}
+	bob := person{name: "Bob", age: 41}
+	tomas := person{name: "Tom", age: 41}
+	fmt.Println(tom == bob, tom == tomas, &tom == &tomas) // false true false
+
+	// Ключи сравниваются по значению, поэтому tomas находит запись для tom.
+	roleByPerson := map[person]string{tom: "admin"}
+	fmt.Println(roleByPerson[tomas]) // admin
+
+	// _ = struct{ tags []string }{} == struct{ tags []string }{} // Ошибка компиляции: поле-срез.
+	// entry := struct{ value interface{} }{value: []int{1}}
+	// fmt.Println(entry == entry) // Паника: динамический тип []int несравним.
 }
 
-func showGenericAlias() {
-	// set[string] идентичен map[string]bool, значение отсутствующего ключа равно false.
-	var active set[string] = map[string]bool{"go": true}
-	fmt.Println(active["go"], active["rust"]) // true false
+func showEmbedding() {
+	tom := account{login: "tom", profile: person{name: "Tom", age: 41}}
+	alice := member{login: "alice", person: person{name: "Alice", age: 23}}
+	fmt.Println(tom.profile.name)              // Tom
+	fmt.Println(alice.name, alice.person.name) // Alice Alice
+
+	// Имена встроенных полей здесь совпадают с именами их типов.
+	record := struct {
+		string
+		company string
+		int
+	}{string: "Tom", company: "Acme", int: 41}
+	fmt.Println(record.string, record.company, record.int) // Tom Acme 41
+	// type duplicate struct{ string; string } // Ошибка компиляции: два поля string.
+
+	type nickname struct{ name string }
+	colliding := struct {
+		person
+		nickname
+	}{person: alice.person, nickname: nickname{name: "Al"}}
+	// fmt.Println(colliding.name) // Ошибка компиляции: два поля name на одной глубине.
+	fmt.Println(colliding.person.name, colliding.nickname.name) // Alice Al
+
+	var linked struct{ *person }
+	fmt.Println(linked.person == nil) // true
+	// fmt.Println(linked.name) // Паника: продвинутое поле читается через nil.
+}
+
+func showLinkedList() {
+	first := node{value: 4}
+	second := node{value: 5}
+	third := node{value: 6}
+	first.next = &second
+	second.next = &third
+
+	// У последнего узла next равен nil. Цикл выводит значения по одному на строку.
+	for current := &first; current != nil; current = current.next {
+		fmt.Println(current.value) // 4, 5, 6 на отдельных строках
+	}
 }
