@@ -2,179 +2,106 @@ package main
 
 import "fmt"
 
-type Point struct {
-	X int
-}
+type mile uint
+type kilometer uint
+type mileAlias = uint
+type routeMile = mile
+
+type BinaryOp = func(int, int) int
+type NamedBinaryOp func(int, int) int
+
+// Обобщённый псевдоним доступен с Go 1.24.
+type set[K comparable] = map[K]bool
 
 func main() {
-	showAddress()
-	showNilAndNew()
-	showPointerToPointer()
-	showPointerArray()
-	showPointerCopy()
-	showPointerParameters()
-	showPointerResults()
-	showAddressableValues()
-
-	// Адрес локальной переменной остаётся пригодным после возврата из функции.
-	fmt.Println(*newScore(7)) // 7
+	showDistanceTypes()
+	showAliasIdentity()
+	showOperations()
+	showGenericAlias()
 }
 
-func showAddress() {
-	var x int = 4
-	var p *int
-	// &x имеет тип *int. Конкретный адрес зависит от запуска.
-	p = &x
-	fmt.Printf("Адрес: %p\n", p) // Например: Адрес: 0xc000010100
-	fmt.Println("Значение:", *p) // Значение: 4
+func showDistanceTypes() {
+	// Нетипизированная константа 5 представима в mile, а арифметика работает как у uint.
+	var distance mile = 5
+	fmt.Println(distance) // 5
+	distance += 5
+	fmt.Println(distance)     // 10
+	distanceToEnemy(distance) // 10 миль до противника
 
-	// Разыменование позволяет записать новое значение в x.
-	*p = 25
-	fmt.Println(x) // 25
+	var routeDistance routeMile = distance
+	distanceToEnemy(routeDistance) // 10 миль до противника
 
-	// При коротком объявлении тип *float64 выводится из &temperature.
-	temperature := 2.3
-	reading := &temperature
-	fmt.Println(*reading) // 2.3
+	// Обе переменные имеют тип uint, поэтому присваивание возможно в обе стороны.
+	var raw uint = 10
+	var aliasDistance mileAlias = raw
+	raw = aliasDistance
+	fmt.Println(raw, aliasDistance) // 10 10
+
+	km := kilometer(16)
+	// distanceToEnemy(km) // Ошибка компиляции: kilometer и mile — разные типы.
+	// distanceToEnemy(raw) // Ошибка компиляции: uint и mile — разные типы.
+	// distanceToEnemy(-1) // Ошибка компиляции: -1 не представимо в mile.
+	distanceToEnemy(mile(raw)) // 10 миль до противника
+	// Преобразование типа не переводит километры в мили.
+	fmt.Println(mile(km)) // 16
 }
 
-func showNilAndNew() {
-	var p *int
-	fmt.Println(p == nil) // true
-	// fmt.Println(*p) // Паника: разыменование nil.
-	if p != nil {
-		fmt.Println(*p) // Эта строка пропускается.
-	}
-
-	// Интерфейс хранит динамический тип *int даже при нулевом значении указателя.
-	var boxed any = p
-	fmt.Println(boxed == nil) // false
-
-	// new(int) возвращает адрес новой переменной со значением 0.
-	p = new(int)
-	fmt.Println(*p) // 0
-	*p = 8
-	fmt.Println(*p) // 8
+func distanceToEnemy(distance mile) {
+	fmt.Println(distance, "миль до противника")
 }
 
-func showPointerToPointer() {
-	number := 9
-	p := &number
-	pp := &p // Адрес переменной p, тип **int.
-
-	fmt.Println(pp == &p, *pp == p, **pp) // true true 9
-
-	// Через *pp можно поменять сам p. Теперь он указывает на other.
-	other := 20
-	*pp = &other
-	fmt.Println(*p, number) // 20 9
+func (distance mile) Double() mile {
+	return distance * 2
 }
 
-func showPointerArray() {
-	first, second, fourth := 1, 2, 4
-	pointers := [4]*int{&first, &second, nil, &fourth}
-	fmt.Println(pointers[2] == nil) // true
+func showAliasIdentity() {
+	// У псевдонима тот же набор методов и тот же динамический тип.
+	var distance routeMile = 5
+	fmt.Println(distance.Double()) // 10
 
-	for _, p := range pointers {
-		// Пропускаем пустой элемент перед разыменованием.
-		if p != nil {
-			fmt.Println(*p) // 1, 2, 4 на отдельных строках.
-		}
-	}
+	value := any(distance)
+	_, isMile := value.(mile)
+	_, isUint := value.(uint)
+	fmt.Println(isMile, isUint) // true false
+
+	// Срезы идентичны, так как идентичны их типы элементов.
+	var route []routeMile = []mile{5, 10}
+	fmt.Println(route) // [5 10]
+	// _ = []uint(route) // Ошибка компиляции: mile и uint — разные типы элементов.
 }
 
-func showPointerCopy() {
-	score := 10
-	pointer := &score
+func showOperations() {
+	// Псевдоним и исходная сигнатура обозначают один тип функции.
+	var rawOperation func(int, int) int = add
+	action(10, 25, rawOperation) // 35
+	var operation BinaryOp = rawOperation
+	action(10, 35, operation) // 45
 
-	// Присваивание копирует адрес. Оба указателя обращаются к score.
-	alias := pointer
-	*alias = 15
-	fmt.Println(score, *pointer, pointer == alias) // 15 15 true
+	// NamedBinaryOp — отдельный тип. Присваивание допустимо, так как тип add неименованный.
+	var namedOperation NamedBinaryOp = add
+	action(10, 35, namedOperation) // 45
+
+	// Два определённых функциональных типа требуют явного преобразования.
+	type anotherOperation func(int, int) int
+	// var other anotherOperation = namedOperation // Ошибка компиляции: оба типа именованные.
+	other := anotherOperation(namedOperation)
+	action(2, 3, other) // 5
+
+	var unset BinaryOp
+	fmt.Println(unset == nil) // true
+	// action(10, 35, unset) // Паника: вызов функции со значением nil.
 }
 
-func showPointerParameters() {
-	number := 5
-	fmt.Println(number) // 5
-
-	// Параметр получает копию числа. Присваивание не меняет number.
-	squareValue(number)
-	fmt.Println(number) // 5
-
-	fmt.Println(number) // 5
-	// Параметр получает копию адреса. Запись через него меняет number.
-	squareThroughPointer(&number)
-	fmt.Println(number) // 25
-
-	backup := 99
-	pointer := &number
-	// Присваивание параметру в redirect не меняет переменную pointer.
-	redirect(pointer, &backup)
-	fmt.Println(*pointer) // 25
-	pointer = redirect(pointer, &backup)
-	fmt.Println(*pointer) // 99
-
-	// slot хранит адрес самой переменной pointer и имеет тип **int.
-	slot := &pointer
-	*slot = &number
-	fmt.Println(*pointer) // 25
+func action(left, right int, op BinaryOp) {
+	fmt.Println(op(left, right))
 }
 
-func squareValue(value int) {
-	value = value * value
-	fmt.Println("Внутри squareValue:", value) // Внутри squareValue: 25
+func add(left, right int) int {
+	return left + right
 }
 
-func squareThroughPointer(value *int) {
-	*value = (*value) * (*value)
-}
-
-func redirect(target, replacement *int) *int {
-	target = replacement
-	return target
-}
-
-func showPointerResults() {
-	// Каждый вызов создаёт отдельную переменную типа int.
-	p1 := createPointer(7)
-	p2 := createPointer(10)
-	p3 := createPointer(28)
-	fmt.Println("p1:", *p1) // p1: 7
-	fmt.Println("p2:", *p2) // p2: 10
-	fmt.Println("p3:", *p3) // p3: 28
-}
-
-func createPointer(value int) *int {
-	pointer := new(int)
-	*pointer = value
-	return pointer
-}
-
-func showAddressableValues() {
-	point := &Point{X: 3}
-	// Go автоматически разыменовывает указатель при выборе поля.
-	point.X = 4
-	fmt.Println(point.X) // 4
-
-	numbers := []int{1, 2}
-	element := &numbers[0]
-	*element = 7
-	fmt.Println(numbers) // [7 2]
-
-	for index, value := range numbers {
-		// value содержит копию числа. numbers[index] обозначает сам элемент.
-		copyAddress := &value
-		*copyAddress += 10
-		elementAddress := &numbers[index]
-		*elementAddress += 1
-	}
-	fmt.Println(numbers) // [8 3]
-
-	// &len(numbers) нельзя использовать: результат вызова не адресуем.
-	// &scores["go"] нельзя использовать, если scores — карта.
-}
-
-func newScore(initial int) *int {
-	score := initial
-	return &score
+func showGenericAlias() {
+	// set[string] идентичен map[string]bool, значение отсутствующего ключа равно false.
+	var active set[string] = map[string]bool{"go": true}
+	fmt.Println(active["go"], active["rust"]) // true false
 }
