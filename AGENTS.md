@@ -14,6 +14,12 @@ they affect the result.
 
 - `README.md` explains the lesson in Russian and stands on its own. Introduce the topic up front and include the
   context, definitions, and short examples readers need to understand it without opening `hello.go`.
+- Use descriptive section headings for major concepts and subheadings for distinct rules, behaviors, and edge cases.
+  Place short Go code blocks next to the points they illustrate. Use several focused blocks when a section covers
+  multiple ideas, so readers can understand each rule before moving to the next one.
+- In README code blocks, use concise Russian comments next to the relevant lines. Explain what the code does and why
+  it behaves that way, such as which field changes, what gets copied or shared, or why a line fails to compile or
+  panics. Show the expected output beside the call. Use surrounding prose for the rule and its context.
 - Link to `hello.go` as a runnable companion for practice. Give the explanations in `README.md` itself.
 - Keep the README focused on the current topic. Link to related lesson branches where helpful.
 - `hello.go` contains runnable, idiomatic examples in `package main`. Use descriptive Go identifiers and Russian
