@@ -1,358 +1,420 @@
-# Урок 019. Методы в Go
+# Урок 020. Срезы в Go
 
-**Метод** — функция, связанная с определённым типом. У метода есть получатель (receiver) —
-один дополнительный параметр перед именем метода. При вызове `value.method(arg)` выражение
-`value` передаётся в получатель, а `arg` — в обычный параметр. Тип получателя определяет,
-с чем работает метод внутри: с копией значения или с копией указателя.
+**Срез** (`slice`) — составной тип данных, который описывает последовательный участок массива.
+Все элементы имеют один тип. Запись `[]T` задаёт тип элементов `T`, а длина и ёмкость относятся
+к конкретному значению среза. Поэтому `[3]string` и `[4]string` — разные типы массивов, а срезы
+из трёх и четырёх строк могут иметь один тип `[]string`.
 
-Практические примеры собраны в [hello.go](hello.go). Запуск командой `go run hello.go`.
+Примеры для запуска собраны в [hello.go](hello.go). Команда — `go run hello.go`. Для всего урока
+нужен Go 1.22 или новее, чтобы пример с `slices.Delete` обнулял хвост. Сам пакет `slices` появился в Go 1.21.
 
-## Объявление и вызов метода
+## Объявление и создание срезов
 
-### Метод именованного среза
+### Нулевой и пустой срез
 
 ```go
-type library []string // Новый определённый тип с базовым типом []string.
+var users []string                        // Нулевое значение среза равно nil.
+empty := []string{}                       // Пустой литерал даёт ненулевой срез.
+named := []string{"Tom", "Alice", "Kate"} // Литерал создаёт массив для трёх строк.
 
-func (books library) print() {
-    for _, title := range books { // books — получатель. Обходим срез, переданный при вызове.
-        fmt.Println(title)
-    }
+fmt.Println(users == nil, len(users), cap(users)) // true 0 0
+fmt.Println(empty == nil, len(empty), cap(empty)) // false 0 0
+fmt.Println(named)                                // [Tom Alice Kate]
+```
+
+По `nil`-срезу можно пройти циклом `range`. Итераций будет ноль. С ним также работают `append`,
+`copy` и выражение `users[:0]`. Чтение `users[0]` вызовет панику: нет элемента с таким индексом.
+
+### `make` задаёт длину и ёмкость
+
+```go
+users := make([]string, 3)                 // Уже есть три элемента со значением "".
+fmt.Printf("%q\n", users)                  // ["" "" ""]
+users[0], users[1], users[2] = "Tom", "Alice", "Bob"
+fmt.Println(users, len(users), cap(users)) // [Tom Alice Bob] 3 3
+
+planned := make([]string, 0, 3)            // Длина 0, место под три будущих элемента.
+planned = append(planned, "Tom")
+fmt.Println(planned, len(planned), cap(planned)) // [Tom] 1 3
+// planned[1] = "Alice" // Паника: индекс за пределами длины, хотя место в массиве есть.
+```
+
+Если ёмкость пропущена, она равна длине. Должно выполняться `0 <= len <= cap`.
+Противоречащие этому константы дают ошибку компиляции, а недопустимые значения переменных —
+панику при вызове. Выбирайте положительную длину, когда нужно сразу заполнять элементы
+по индексам, и нулевую длину с запасом ёмкости, когда будете добавлять через `append`.
+
+## Выражения среза
+
+### Срез массива, указателя на массив и другого среза
+
+```go
+initialUsers := [8]string{"Bob", "Alice", "Kate", "Sam", "Tom", "Paul", "Mike", "Robert"}
+
+middle := initialUsers[2:6] // Включает индексы 2, 3, 4 и 5. Индекс 6 исключён.
+first := initialUsers[:4]  // Пропущенная левая граница равна 0.
+last := initialUsers[3:]   // Пропущенная правая граница равна len(initialUsers).
+
+fmt.Println(middle) // [Kate Sam Tom Paul]
+fmt.Println(first)  // [Bob Alice Kate Sam]
+fmt.Println(last)   // [Sam Tom Paul Mike Robert]
+
+fmt.Println(middle[:2])     // [Kate Sam]. Индексы отсчитываются от начала middle.
+pointer := &initialUsers
+fmt.Println(pointer[2:4])   // [Kate Sam]. Сокращение для (*pointer)[2:4].
+```
+
+У результата `s[i:j]` длина `j-i`. Для массива и указателя на массив границы
+удовлетворяют `0 <= i <= j <= len(s)`, для среза — `0 <= i <= j <= cap(s)`. Массив должен
+быть адресуемым. Например, переменную-массив можно нарезать напрямую, а для литерала
+можно взять адрес и нарезать через указатель. Границы проверяются при компиляции там,
+где это позволяет тип и константы. Остальные нарушения вызывают панику при выполнении.
+
+### Длина ограничивает индекс, ёмкость — расширение
+
+```go
+array := [6]int{1, 2, 3, 4, 5, 6}
+window := array[1:5] // От индекса 1 до 4, но исходный массив продолжается до индекса 5.
+fmt.Println(window, len(window), cap(window)) // [2 3 4 5] 4 5
+
+wider := window[:5]              // Правая граница допустима, потому что cap(window) == 5.
+fmt.Println(wider[4], len(window)) // 6 4. Длина window прежняя.
+// fmt.Println(window[4]) // Паника: индекс проверяется по len(window), а не по cap(window).
+```
+
+`cap` показывает, до какой длины можно расширить срез, сохраняя его начало и текущий массив.
+Ёмкость по умолчанию ограничена концом массива или ёмкостью исходного среза.
+У пустого среза длина может быть нулевой, а ёмкость — положительной.
+
+### Третий индекс ограничивает ёмкость
+
+```go
+array := [6]int{1, 2, 3, 4, 5, 6}
+limited := array[1:3:3] // len = 3 - 1, cap = 3 - 1. Элементы по-прежнему общие.
+limited[0] = 22
+fmt.Println(limited, len(limited), cap(limited)) // [22 3] 2 2
+fmt.Println(array)                               // [1 22 3 4 5 6]
+
+// _ = limited[:3] // Паника: новый предел превышает cap(limited).
+```
+
+Для `s[low:high:max]` действует `0 <= low <= high <= max <= cap(s)`.
+Длина равна `high-low`, ёмкость — `max-low`. Пропустить можно только `low`.
+Выражение `s[:len(s):len(s)]` оставляет все текущие элементы и ограничивает ёмкость длиной.
+Если после этого добавить хотя бы один элемент, `append` выделит новый массив.
+
+### Подстрока и байтовые индексы
+
+```go
+message := "Hello World"
+fmt.Println(message[6:]) // World. Результат имеет тип string.
+
+word := "ёж"
+fmt.Println(len(word), word[:2]) // 4 ё. Один символ здесь закодирован двумя байтами.
+fmt.Printf("% x\n", word[:1])    // d1. По произвольной границе можно разрезать кодировку UTF-8.
+```
+
+У строки индексы выражения среза — смещения в байтах. Правая граница ограничена `len(str)`.
+Трёхиндексная форма для строки недоступна. Для индексации по кодовым точкам можно работать
+со срезом `[]rune`. Одна кодовая точка не всегда соответствует целому видимому символу.
+
+## Общий массив, присваивание и перебор
+
+### Запись видна через оба представления
+
+```go
+array := [6]int{1, 2, 3, 4, 5, 6}
+window := array[1:5]
+array[1] = 22                       // array[1] — это window[0].
+fmt.Println(window)                // [22 3 4 5]
+window[1] = 33                      // window[1] — это array[2].
+fmt.Println(array)                 // [1 22 33 4 5 6]
+
+alias := window                     // Копируем описание, элементы остаются общими.
+alias = alias[:1]                   // Длина меняется только у alias.
+fmt.Println(len(window), len(alias)) // 4 1
+```
+
+Рабочая модель среза — указатель на участок массива, длина и ёмкость. Спецификация
+описывает эти свойства и совместное использование элементов без требования к конкретной
+раскладке значения в памяти. В аргумент функции описание передаётся по значению. Функция
+может поменять элементы общего массива. Чтобы вызывающий получил новую длину, функция
+обычно возвращает получившийся срез.
+
+### Изменение элемента через индекс в `range`
+
+```go
+users := []string{"Tom", "Alice", "Kate"}
+fmt.Println(users[2]) // Kate
+users[2] = "Katherine"
+
+for _, name := range users {
+    fmt.Println(name) // Tom, Alice, Katherine на отдельных строках.
 }
 
-// Внутри функции.
-lib := library{"Book1", "Book2", "Book3"}
-lib.print() // Book1, Book2, Book3 на отдельных строках.
-```
-
-В `func (books library) print()` имя получателя — `books`, его тип — `library`, имя метода —
-`print`. Пустые скобки после `print` означают, что у метода нет обычных параметров.
-
-### Методы структуры, параметры и результат
-
-```go
-type person struct {
-    name string
-    age  int
+scores := []int{1, 2, 3}
+for index, score := range scores {
+    scores[index] = score * 10 // score — копия, а scores[index] — элемент массива.
 }
+fmt.Println(scores) // [10 20 30]
+```
 
-func (p person) print() {
-    fmt.Println("Name:", p.name) // Читаем поля конкретного получателя p.
-    fmt.Println("Age:", p.age)
+При `range` по срезу срез для обхода определяется перед циклом. Увеличение длины переменной
+через `append` внутри цикла не увеличит число итераций. Запись в ещё не прочитанные элементы
+общего массива может изменить значения, которые цикл получит дальше.
+
+```go
+numbers := []int{1, 2}
+for _, value := range numbers {
+    numbers = append(numbers, value*10) // Добавляем элементы, но обход по-прежнему из двух шагов.
 }
-
-func (p person) eat(meal string) {
-    fmt.Println(p.name, "eats", meal) // Имя берём из получателя, еду — из параметра.
-}
-
-func (p person) currentAge() int {
-    return p.age // Метод может возвращать результат как обычная функция.
-}
-
-// Внутри функции.
-tom := person{name: "Tom", age: 24}
-tom.print()                   // Name: Tom, затем Age: 24 на новой строке.
-tom.eat("apples")             // Tom eats apples. Получатель — tom, аргумент — "apples".
-fmt.Println(tom.currentAge()) // 24
+fmt.Println(numbers) // [1 2 10 20]
 ```
 
-### Для каких типов можно объявлять методы
-
-Метод объявляется на уровне пакета. Базовый тип получателя должен быть определён в том же
-пакете и не может быть указателем или интерфейсом. В объявлении получателя можно записать
-сам тип `T` или указатель `*T`. У одного базового типа имена методов уникальны. У структуры
-имя метода также не может совпасть с именем её поля.
+### Срезы срезов
 
 ```go
-type counter int
+rows := [][]int{{1, 2}, {3, 4}, {5, 6, 7}} // Длины строк могут отличаться.
+rows[1][0] = 30                            // Выбираем строку с индексом 1, затем её элемент 0.
+fmt.Println(rows)                         // [[1 2] [30 4] [5 6 7]]
 
-func (c counter) doubled() int { return int(c) * 2 }
-
-// func (c *counter) doubled() int { return int(*c) * 2 } // Ошибка: имя doubled уже занято.
-// func (n int) doubled() int { return n * 2 }           // Ошибка: int определён вне пакета.
-// func (values []string) print() {}                     // Ошибка: []string неименованный тип.
-
-// Внутри функции.
-fmt.Println(counter(5).doubled()) // 10
+grid := make([][]int, 2)
+fmt.Println(grid[0] == nil) // true. make создал внешние элементы, а строки ещё nil.
+grid[0] = make([]int, 3)
+fmt.Println(grid)          // [[0 0 0] []]
 ```
 
-`library.print` и `person.print` могут сосуществовать, поскольку принадлежат разным базовым типам.
-Интерфейс перечисляет методы в своём объявлении, а реализацию предоставляет конкретный тип.
-Псевдоним чужого типа не позволяет добавить к нему методы. Обычный псевдоним собственного
-необобщённого типа может использоваться в получателе. Метод тогда связывается с исходным типом.
+Каждый элемент внешнего среза — отдельное описание внутреннего среза. Можно выделить массив
+для каждой строки или нарезать один общий буфер. Если строки созданы из одного буфера,
+учитывайте общую память и ёмкость каждой строки.
 
-## Получатель-значение и получатель-указатель
+## Добавление через `append`
 
-### Получатель `person`: изменение остаётся в копии
+### Сохраните возвращённый срез
 
 ```go
-func (p person) updateAgeOnCopy(newAge int) {
-    p.age = newAge // Меняем поле локальной копии.
-    fmt.Println("inside", p.age)
-}
+users := []string{"Tom", "Alice", "Kate"}
+users = append(users, "Bob")
+users = append(users, []string{"Sam", "Paul"}...) // ... передаёт элементы второго среза.
+fmt.Println(users) // [Tom Alice Kate Bob Sam Paul]
 
-// Внутри функции.
-tom := person{name: "Tom", age: 24}
-fmt.Println("before", tom.age) // before 24
-tom.updateAgeOnCopy(33)        // inside 33
-fmt.Println("after", tom.age)  // after 24. Исходное поле осталось прежним.
+var numbers []int
+numbers = append(numbers, 1)
+fmt.Println(numbers) // [1]. Нулевой срез подходит для первого append.
 ```
 
-Если нужна изменённая копия, метод с получателем-значением может её вернуть. Вызывающая
-сторона затем решает, сохранить ли её в другой переменной или присвоить обратно.
+Если места хватает, `append` использует прежний массив. Если места не хватает, создаёт новый
+массив достаточной ёмкости и копирует в него прежние элементы. Формула роста ёмкости
+зависит от реализации. В обоих случаях длина результата видна только после присваивания
+или передачи результата дальше. Допустимы перекрывающиеся исходный и целевой участки.
+
+### Когда добавление перезаписывает соседний элемент
 
 ```go
-func (p person) withAge(newAge int) person {
-    p.age = newAge
-    return p // Возвращаем изменённую копию.
-}
+array := [4]int{10, 20, 30, 40}
+prefix := array[:2]                       // len = 2, cap = 4.
+extended := append(prefix, 99)            // Места хватает. Пишем в array[2].
+fmt.Println(prefix, extended, array)     // [10 20] [10 20 99] [10 20 99 40]
 
-// Внутри функции.
-tom := person{name: "Tom", age: 24}
-older := tom.withAge(33)
-fmt.Println(tom.age, older.age) // 24 33
+limited := array[:2:2]                    // Те же первые элементы, но cap == len.
+detached := append(limited, 77)           // Для добавления нужен новый массив.
+detached[0] = 100
+fmt.Println(detached, array)              // [100 20 77] [10 20 99 40]
 ```
 
-### Получатель `*person`: изменение видно в исходной структуре
+Ограничение ёмкости защищает соседнюю область при добавлении, хотя до `append` запись
+в видимый элемент всё ещё меняет общий массив. Когда нужна независимая копия уже сейчас,
+используйте `copy` или `slices.Clone`.
+
+## Удаление элементов
+
+### Удаление с сохранением порядка
 
 ```go
-func (p *person) updateAge(newAge int) {
-    p.age = newAge // Сокращение для (*p).age = newAge. Пишем по адресу.
-}
-
-// Внутри функции.
-tom := person{name: "Tom", age: 24}
-var pointer *person = &tom
-fmt.Println("before", tom.age) // before 24
-pointer.updateAge(33)          // В получатель p копируется адрес tom.
-fmt.Println("after", tom.age)  // after 33
-
-tom.updateAge(34)     // tom адресуемая. Go вызывает (&tom).updateAge(34).
-fmt.Println(tom.age) // 34
+users := []string{"Bob", "Alice", "Kate", "Sam", "Tom", "Paul", "Mike", "Robert"}
+before := users // Второй срез с исходной длиной, но на том же массиве.
+index := 3
+users = append(users[:index], users[index+1:]...) // Сдвигаем хвост на место Sam.
+fmt.Println(users)                              // [Bob Alice Kate Tom Paul Mike Robert]
+fmt.Println(before)                             // [Bob Alice Kate Tom Paul Mike Robert Robert]
+clear(before[len(users):])                      // Обнуляем освободившиеся элементы.
+fmt.Printf("%q\n", before[len(users)])           // ""
 ```
 
-Оба получателя передаются по значению. В `p person` копируется структура, а в `p *person` —
-адрес. Присваивание нового адреса самой переменной `p` внутри метода меняет только локальный
-параметр. Присваивание в `p.age` меняет объект по сохранённому адресу.
+Операция стоит `O(len(s)-index)`, потому что сдвигает элементы после удаляемого.
+Индекс должен быть в пределах длины. У других срезов того же массива длина не меняется,
+но сдвиг и очистку они видят. Обнуление особенно важно для указателей и других значений,
+удерживающих данные в памяти.
 
-### Получатель-значение может менять общие данные
+### `slices.Delete` и удаление без сохранения порядка
 
 ```go
-func (books library) replaceFirst(title string) {
-    books[0] = title // Запись в общий массив. У среза должен быть хотя бы один элемент.
-}
-
-func (books library) keepFirst() {
-    books = books[:1] // Меняем длину только локального описания среза.
-    fmt.Println(len(books))
-}
-
-func (books *library) add(title string) {
-    *books = append(*books, title) // Записываем новое описание среза через указатель.
-}
-
-// Внутри функции.
-lib := library{"Book1", "Book2"}
-lib.replaceFirst("Go")
-fmt.Println(lib)      // [Go Book2]
-lib.keepFirst()       // 1
-fmt.Println(len(lib)) // 2
-lib.add("Book3")
-fmt.Println(lib) // [Go Book2 Book3]
+numbers := []int{10, 20, 30, 40}
+original := numbers
+numbers = slices.Delete(numbers, 1, 3) // Удаляет индексы 1 и 2. Граница 3 исключена.
+fmt.Println(numbers, original)        // [10 40] [10 40 0 0]. Хвост обнулён с Go 1.22.
 ```
 
-При копировании среза копируется его описание, и оба среза продолжают обращаться к одному
-массиву. При замене элемента меняется массив. Чтобы сохранить для вызывающего новую длину
-после `append`, верните новый срез или запишите его через указатель, как в `add`.
-
-### Как выбрать получателя
-
-- Значение подходит для малого типа, который естественно копировать, или для метода,
-  возвращающего изменённую копию.
-- Указатель подходит, когда метод меняет сам объект или когда объект нельзя копировать,
-  например после первого использования поля типа `sync.Mutex`.
-- Для больших значений указатель может снизить стоимость копирования. Размещение в памяти
-  и оптимизации зависят от компилятора. Выбор ради производительности проверяйте измерениями.
-
-В этом уроке у `person` и `library` есть оба вида получателей, чтобы сравнить их поведение.
-В прикладном коде для методов одного типа обычно придерживаются последовательного выбора.
-
-## Адресуемость и набор методов
-
-### Где Go автоматически берёт адрес
+`slices.Delete(s, i, j)` меняет содержимое исходного массива и возвращает укороченный срез.
+Если порядок не важен, перенесите последний элемент на место удаляемого. Тогда сдвиг не нужен.
 
 ```go
-tom := person{name: "Tom", age: 24}
-tom.updateAge(33) // Вызов через адресуемую переменную.
-(&person{name: "Bob"}).updateAge(40) // Явно берём адрес составного литерала.
-
-team := []person{tom}
-team[0].updateAge(35)          // Элемент среза адресуем.
-fmt.Println(team[0].age)       // 35
-fmt.Println(tom.age)           // 33. В срез положили копию значения tom.
-
-people := map[string]person{"tom": tom}
-// people["tom"].updateAge(36) // Ошибка: элемент карты неадресуем.
-fmt.Println(people["tom"].currentAge()) // 33. Получателю-значению адрес не нужен.
-
-// (person{name: "Bob"}).updateAge(40) // Ошибка: литерал сам по себе неадресуем.
+numbers := []int{10, 20, 30, 40}
+index := 1
+last := len(numbers) - 1
+numbers[index] = numbers[last] // На место 20 записываем 40.
+numbers[last] = 0              // Для указателей здесь записали бы nil.
+numbers = numbers[:last]
+fmt.Println(numbers) // [10 40 30]
 ```
 
-Результат функции типа `person` тоже неадресуем. Сохраните его в переменную или возвращайте
-`*person`, если функция должна выдать указатель. Для карты с элементами `*person` значение указателя
-можно передать в метод напрямую. Сам элемент карты от этого адресуемым не становится.
+## Копирование и время жизни массива
 
-### Почему вызов компилируется, а присваивание интерфейсу — нет
-
-**Набор методов** определяет, какие методы принадлежат типу. Для определённого типа `T` в набор
-входят методы с получателем `T`. Для `*T` в набор входят методы с получателем `T` и `*T`.
-Продвинутые методы встроенных полей тоже могут входить в набор.
+### `copy(dst, src)` использует длину обоих срезов
 
 ```go
-type ageReader interface{ currentAge() int }
-type ageUpdater interface{ updateAge(int) }
+source := []int{1, 2, 3, 4, 5, 6}
+empty := make([]int, 0, 6)
+short := make([]int, 3)
+long := make([]int, 8)
 
-var _ ageReader = person{}  // currentAge входит в набор person.
-var _ ageReader = &person{} // currentAge входит и в набор *person.
-var _ ageUpdater = &person{}
-// var _ ageUpdater = person{} // Ошибка: updateAge отсутствует в наборе person.
-
-// Внутри функции.
-tom := person{age: 24}
-tom.updateAge(33) // Вызов разрешён: Go использует &tom.
-
-// var updater ageUpdater = tom // Ошибка: при присваивании интерфейсу & не подставляется.
-var updater ageUpdater = &tom
-updater.updateAge(34)
-fmt.Println(tom.age) // 34
+fmt.Println(copy(empty, source), empty) // 0 []. Ёмкость назначения не увеличивает число копий.
+fmt.Println(copy(short, source), short) // 3 [1 2 3]
+fmt.Println(copy(long, source), long)   // 6 [1 2 3 4 5 6 0 0]. Последние элементы прежние.
 ```
 
-Встраивание `T` продвигает его методы с получателем `T` в наборы `S` и `*S`, а методы
-с получателем `*T` — в набор `*S`. Встраивание `*T` может продвинуть обе группы в оба набора.
-Пример разрешения конфликтов имён есть в [уроке 018 о структурах][structs].
-
-## Значение метода и выражение метода
-
-### Значение метода сохраняет получатель
+`copy` возвращает `min(len(dst), len(src))` и сохраняет длины обоих срезов.
+Перекрытие допустимо. Есть специальная форма `copy(dst, text)`, где для назначения
+типа `[]byte` из строки копируются байты.
 
 ```go
-tom := person{age: 24}
-readAge := tom.currentAge  // func() int. Сейчас сохраняется копия person.
-update := tom.updateAge    // func(int). Сейчас сохраняется указатель &tom.
-update(33)
-
-fmt.Println(readAge(), tom.age) // 24 33
+values := []int{1, 2, 3, 4}
+count := copy(values[1:], values[:3]) // Оба аргумента ссылаются на один массив.
+fmt.Println(count, values)           // 3 [1 1 2 3]
 ```
 
-Получатель вычисляется при создании значения метода, ещё до вызова сохранённой функции.
-При получателе-указателе сохраняется конкретный адрес. Если позже записать другой адрес
-в переменную-указатель, сохранённая функция продолжит обращаться по прежнему адресу.
+### Независимые элементы и поверхностная копия
 
 ```go
-tom, bob := person{age: 24}, person{age: 30}
-pointer := &tom
-update := pointer.updateAge // Сохраняем текущий адрес, то есть &tom.
-pointer = &bob              // Меняем только переменную pointer.
-update(33)
-fmt.Println(tom.age, bob.age) // 33 30
+original := []int{1, 2, 3}
+cloned := slices.Clone(original)
+cloned[0] = 99
+fmt.Println(original, cloned) // [1 2 3] [99 2 3]
+
+rows := [][]int{{1, 2}}
+clonedRows := slices.Clone(rows)
+clonedRows[0][0] = 10          // Скопированы только описания строк. Их массивы общие.
+fmt.Println(rows, clonedRows) // [[10 2]] [[10 2]]
 ```
 
-### Выражение метода принимает получатель явно
+Без `slices.Clone` можно создать `make([]T, len(source))` и вызвать `copy`.
+Чтобы клонировать вложенные срезы, нужно копировать каждую строку отдельно. Маленький
+подсрез может удерживать весь большой массив. Если нужен только этот участок, скопируйте
+его элементы и отпустите ссылки на прежний массив. Укорочение или ограничение ёмкости
+само по себе не отсоединяет срез от массива.
+
+## Сортировка, поиск и обратный порядок
+
+### Сортировка меняет исходный массив
 
 ```go
-tom := person{age: 24}
-readAge := person.currentAge  // func(person) int.
-update := (*person).updateAge // func(*person, int).
-fmt.Println(readAge(tom))     // 24. Получатель передан первым аргументом.
+users := []string{"Tom", "Bob", "Sam"}
+sort.Strings(users) // Сортировка на месте, по возрастанию.
+fmt.Println(users)  // [Bob Sam Tom]
 
-update(&tom, 33)
-readFromPointer := (*person).currentAge // func(*person) int. Разыменует переданный адрес.
-fmt.Println(readFromPointer(&tom))      // 33
-
-// _ = person.updateAge // Ошибка: в наборе person метода updateAge нет.
+scores := []int{33, 11, 22}
+slices.Sort(scores) // Та же операция для упорядоченных типов.
+fmt.Println(scores) // [11 22 33]
 ```
 
-## Вызовы через `nil`
+В пакете `sort` есть также `Ints` и `Float64s`. Для порядка по своему правилу используйте
+`slices.SortFunc`. Если элементы с одинаковым ключом должны сохранить взаимный порядок,
+используйте `slices.SortStableFunc`. Чтобы сохранить исходный порядок целиком, сортируйте копию.
+
+### Линейный и двоичный поиск
 
 ```go
-func (p *person) nameOrUnknown() string {
-    if p == nil {
-        return "unknown" // Метод сам обрабатывает nil до чтения полей.
-    }
-    return p.name
-}
+users := []string{"Tom", "Bob", "Sam"}
+fmt.Println(slices.Index(users, "Sam")) // 2. Линейный поиск, сортировка не нужна.
+fmt.Println(slices.Index(users, "Alice")) // -1
 
-// Внутри функции.
-var missing *person
-fmt.Println(missing.nameOrUnknown()) // unknown
-// missing.updateAge(33)            // Паника внутри метода при записи в поле через nil.
-// missing.currentAge()             // Паника до входа в метод. Для получателя нужен person.
+sort.Strings(users)
+fmt.Println(sort.SearchStrings(users, "Sam")) // 1. Теперь порядок [Bob Sam Tom].
+fmt.Println(sort.SearchStrings(users, "Alice")) // 0. Это позиция вставки, а не совпадение.
 
-var namer interface{ nameOrUnknown() string } = missing
-fmt.Println(namer == nil, namer.nameOrUnknown()) // false unknown
+numbers := []int{11, 22, 33, 44, 55, 66}
+fmt.Println(sort.SearchInts(numbers, 33), sort.SearchInts(numbers, 45)) // 2 4
+fmt.Println(slices.BinarySearch(numbers, 45)) // 4 false
+fmt.Println(slices.BinarySearch(numbers, 99)) // 6 false. Позиция вставки может быть len(s).
 ```
 
-У интерфейса `namer` есть динамический тип `*person`, поэтому интерфейс отличен от `nil`,
-даже когда сам указатель равен `nil`. Вызов метода у интерфейса без динамического типа
-вызывает панику.
+Двоичный поиск работает за `O(log n)` по уже отсортированному срезу. `sort.SearchStrings`,
+`sort.SearchInts` и `sort.SearchFloat64s` самостоятельно срез не сортируют. Для строки
+наличие проверяется как `i < len(users) && users[i] == target`. У `slices.BinarySearch`
+признак наличия возвращается отдельно. При повторах возвращается первое совпадение.
+Для разового поиска в несортированных данных линейный обход обычно проще.
 
-## Методы и параметры типов
-
-### Метод обобщённого типа
-
-Начиная с Go 1.18 методы обобщённого типа могут использовать параметры его получателя.
+### Разворот среза и сортировка по убыванию
 
 ```go
-type shelf[T any] []T
+numbers := []int{3, 1, 2}
+slices.Reverse(numbers)                      // Меняем местами элементы с двух концов.
+fmt.Println(numbers)                        // [2 1 3]
 
-func (s shelf[T]) first() (T, bool) {
-    if len(s) == 0 {
-        var zero T // Нулевое значение конкретного T. bool сообщает, что элемента нет.
-        return zero, false
-    }
-    return s[0], true
-}
-
-// Внутри функции.
-fmt.Println(shelf[string]{"Book1"}.first()) // Book1 true
-fmt.Println(shelf[int]{}.first())           // 0 false
+sort.Sort(sort.Reverse(sort.IntSlice(numbers))) // Reverse переворачивает правило сравнения.
+fmt.Println(numbers)                           // [3 2 1]. Перестановку выполняет sort.Sort.
 ```
 
-### Собственные параметры типа метода с Go 1.27
+`slices.Reverse` обращает текущий порядок элементов. `sort.Reverse` возвращает обёртку
+над `sort.Interface`. Аналогично можно передать `sort.StringSlice` или `sort.Float64Slice`.
+
+## Сравнение срезов
 
 ```go
-func (s shelf[T]) collect[R any](convert func(T) R) []R {
-    result := make([]R, 0, len(s))
-    for _, item := range s {
-        result = append(result, convert(item)) // T приходит от shelf, R задаёт метод.
-    }
-    return result
-}
+first := []int{1, 2, 3, 4}
+same := []int{1, 2, 3, 4}
+short := []int{1, 2, 3}
+var missing []int
 
-// Внутри функции.
-books := shelf[string]{"Go", "Methods"}
-lengths := books.collect[int](func(title string) int { return len(title) })
-fmt.Println(lengths) // [2 7]
+// _ = first == same // Ошибка компиляции: срез можно сравнить только с nil.
+fmt.Println(slices.Equal(first, same), slices.Equal(first, short)) // true false
+fmt.Println(slices.Equal(missing, []int{}))                        // true
+fmt.Println(reflect.DeepEqual(missing, []int{}))                    // false
+fmt.Println(reflect.DeepEqual(first, []string{"Tom", "Bob"}))        // false
 ```
 
-В Go 1.26 и раньше такую операцию объявляют отдельной обобщённой функцией с параметрами
-`T` и `R`. Интерфейсные методы не объявляют собственные параметры типов. Обобщённый метод
-с собственными параметрами не реализует метод интерфейса.
+`slices.Equal` сравнивает длину и элементы по порядку. Тип элементов должен допускать
+оператор `==`. Для сравнения по своему правилу, в том числе для `[][]int`, подходит
+`slices.EqualFunc`: в качестве правила для строки можно передать функцию, вызывающую `slices.Equal`.
+Если сравниваются элементы интерфейсного типа, одинаковый несравнимый динамический тип
+может вызвать панику. Например, это произойдёт при сравнении двух `[]any{[]int{1}}`.
+
+`reflect.DeepEqual` проверяет идентичность типов, различает `nil` и ненулевой пустой срез,
+а для срезов одинаковой длины может считать общую начальную позицию достаточной для равенства.
+Например, срез с `NaN` может быть глубоко равен самому себе, хотя поэлементное сравнение `NaN`
+через `==` даёт `false`.
 
 ## Источники
 
-- [Спецификация Go — объявления методов и ограничения получателя](https://go.dev/ref/spec#Method_declarations)
-- [Спецификация Go — вызовы и автоматическое взятие адреса](https://go.dev/ref/spec#Calls)
-- [Спецификация Go — селекторы и nil](https://go.dev/ref/spec#Selectors)
-- [Спецификация Go — наборы методов](https://go.dev/ref/spec#Method_sets)
-- [Спецификация Go — реализация интерфейсов](https://go.dev/ref/spec#Implementing_an_interface)
-- [Спецификация Go — встраивание и продвижение методов](https://go.dev/ref/spec#Struct_types)
-- [Спецификация Go — операции с адресом](https://go.dev/ref/spec#Address_operators)
-- [Спецификация Go — срезы и общий массив](https://go.dev/ref/spec#Slice_types)
-- [Спецификация Go — значения методов](https://go.dev/ref/spec#Method_values)
-- [Спецификация Go — выражения методов](https://go.dev/ref/spec#Method_expressions)
-- [Go Code Review Comments — выбор типа получателя](https://go.dev/wiki/CodeReviewComments#receiver-type)
-- [Заметки о выпуске Go 1.18 — обобщённые типы](https://go.dev/doc/go1.18#language)
-- [Заметки о выпуске Go 1.27 — обобщённые методы](https://go.dev/doc/go1.27#language)
-
-[structs]: https://github.com/Hardome/learn-golang/tree/lesson-018-structs
+- [Спецификация Go — типы срезов и общий массив](https://go.dev/ref/spec#Slice_types)
+- [Спецификация Go — индексы](https://go.dev/ref/spec#Index_expressions)
+- [Спецификация Go — выражения среза](https://go.dev/ref/spec#Slice_expressions)
+- [Спецификация Go — циклы range](https://go.dev/ref/spec#For_range)
+- [Спецификация Go — make](https://go.dev/ref/spec#Making_slices_maps_and_channels)
+- [Спецификация Go — append и copy](https://go.dev/ref/spec#Appending_and_copying_slices)
+- [Спецификация Go — clear](https://go.dev/ref/spec#Clear)
+- [Спецификация Go — сравнение](https://go.dev/ref/spec#Comparison_operators)
+- [Блог Go — устройство срезов и удержание массива](https://go.dev/blog/slices-intro)
+- [Блог Go — обнуление хвоста и общая память](https://go.dev/blog/generic-slice-functions)
+- [Заметки Go 1.21 — стандартный пакет slices](https://go.dev/doc/go1.21#slices)
+- [Заметки Go 1.22 — обнуление хвоста](https://go.dev/doc/go1.22#slices)
+- [Стандартная библиотека — slices.Delete](https://pkg.go.dev/slices#Delete)
+- [Стандартная библиотека — slices.Clone](https://pkg.go.dev/slices#Clone)
+- [Стандартная библиотека — slices.Sort](https://pkg.go.dev/slices#Sort)
+- [Стандартная библиотека — slices.SortStableFunc](https://pkg.go.dev/slices#SortStableFunc)
+- [Стандартная библиотека — sort.SearchStrings](https://pkg.go.dev/sort#SearchStrings)
+- [Стандартная библиотека — slices.BinarySearch](https://pkg.go.dev/slices#BinarySearch)
+- [Стандартная библиотека — slices.Reverse](https://pkg.go.dev/slices#Reverse)
+- [Стандартная библиотека — sort.Reverse](https://pkg.go.dev/sort#Reverse)
+- [Стандартная библиотека — slices.Equal и EqualFunc](https://pkg.go.dev/slices#Equal)
+- [Стандартная библиотека — reflect.DeepEqual](https://pkg.go.dev/reflect#DeepEqual)

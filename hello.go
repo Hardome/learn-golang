@@ -1,161 +1,189 @@
 package main
 
-import "fmt"
-
-type library []string
-
-func (books library) print() {
-	for _, title := range books {
-		fmt.Println(title)
-	}
-}
-
-func (books library) replaceFirst(title string) {
-	books[0] = title // Вызывающая сторона передаёт непустой срез. Массив остаётся общим.
-}
-
-func (books library) keepFirst() {
-	books = books[:1] // Новая длина хранится только в локальном описании среза.
-	fmt.Println(len(books))
-}
-
-func (books *library) add(title string) {
-	*books = append(*books, title) // Сохраняем новое описание в исходной переменной.
-}
-
-type person struct {
-	name string
-	age  int
-}
-
-func (p person) print() {
-	fmt.Println("Name:", p.name)
-	fmt.Println("Age:", p.age)
-}
-
-func (p person) eat(meal string) {
-	fmt.Println(p.name, "eats", meal)
-}
-
-func (p person) currentAge() int {
-	return p.age
-}
-
-func (p person) updateAgeOnCopy(newAge int) {
-	p.age = newAge // Меняется только поле получателя, то есть копии person.
-	fmt.Println("inside", p.age)
-}
-
-func (p person) withAge(newAge int) person {
-	p.age = newAge
-	return p
-}
-
-func (p *person) updateAge(newAge int) {
-	p.age = newAge // Сокращение для (*p).age = newAge.
-}
-
-func (p *person) nameOrUnknown() string {
-	if p == nil {
-		return "unknown"
-	}
-	return p.name
-}
-
-type ageReader interface{ currentAge() int }
-type ageUpdater interface{ updateAge(int) }
-
-// Эти присваивания проверяют наборы методов на этапе компиляции.
-var _ ageReader = person{}
-var _ ageReader = (*person)(nil)
-var _ ageUpdater = (*person)(nil)
-
-// var _ ageUpdater = person{} // Ошибка компиляции: набор person не содержит updateAge.
+import (
+	"fmt"
+	"reflect"
+	"slices"
+	"sort"
+)
 
 func main() {
-	showLibrary()
-	showPerson()
-	showReceivers()
-	showAddressabilityAndInterfaces()
-	showMethodFunctions()
-	showNilReceiver()
+	showCreation()
+	showSliceExpressions()
+	showSharingAndRange()
+	showRows()
+	showAppend()
+	showDelete()
+	showCopy()
+	showSortAndSearch()
+	showComparison()
 }
 
-func showLibrary() {
-	lib := library{"Book1", "Book2", "Book3"}
-	lib.print() // Book1, Book2, Book3 на отдельных строках
+func showCreation() {
+	var missing []string
+	empty := []string{}
+	fmt.Println(missing == nil, len(missing), cap(missing)) // true 0 0
+	fmt.Println(empty == nil, len(empty), cap(empty))       // false 0 0
 
-	lib.replaceFirst("Go")
-	fmt.Println(lib)      // [Go Book2 Book3]
-	lib.keepFirst()       // 1
-	fmt.Println(len(lib)) // 3
+	users := make([]string, 3)
+	fmt.Printf("%q\n", users) // ["" "" ""]
+	users[0], users[1], users[2] = "Tom", "Alice", "Bob"
+	fmt.Println(users, len(users), cap(users)) // [Tom Alice Bob] 3 3
 
-	lib.add("Book4") // lib адресуемая. Метод получает &lib и обновляет описание среза.
-	fmt.Println(lib) // [Go Book2 Book3 Book4]
+	planned := make([]string, 0, 3)
+	// Ёмкость позволяет добавить элемент, но обращаться по индексу пока нельзя.
+	// planned[0] = "Tom" // Паника: длина равна нулю.
+	planned = append(planned, "Tom")
+	fmt.Println(planned, len(planned), cap(planned)) // [Tom] 1 3
 }
 
-func showPerson() {
-	tom := person{name: "Tom", age: 24}
-	tom.print()                   // Name: Tom, затем Age: 24 на новой строке
-	tom.eat("apples")             // Tom eats apples
-	fmt.Println(tom.currentAge()) // 24
+func showSliceExpressions() {
+	initialUsers := [8]string{"Bob", "Alice", "Kate", "Sam", "Tom", "Paul", "Mike", "Robert"}
+	middle := initialUsers[2:6]   // Индекс 6 не входит в результат.
+	fmt.Println(middle)           // [Kate Sam Tom Paul]
+	fmt.Println(initialUsers[:4]) // [Bob Alice Kate Sam]
+	fmt.Println(initialUsers[3:]) // [Sam Tom Paul Mike Robert]
+	fmt.Println(middle[:2])       // [Kate Sam]
+
+	pointer := &initialUsers
+	fmt.Println(pointer[2:4]) // [Kate Sam]
+
+	numbers := [6]int{1, 2, 3, 4, 5, 6}
+	window := numbers[1:5]
+	fmt.Println(window, len(window), cap(window)) // [2 3 4 5] 4 5
+	fmt.Println(window[:5])                       // [2 3 4 5 6]
+	// fmt.Println(window[4]) // Паника: для индексации действует len, а не cap.
+	limited := numbers[1:3:3]
+	fmt.Println(limited, len(limited), cap(limited)) // [2 3] 2 2
+
+	message := "Hello World"
+	fmt.Println(message[6:]) // World
+	word := "ёж"
+	fmt.Println(len(word), word[:2]) // 4 ё
+	fmt.Printf("% x\n", word[:1])    // d1
 }
 
-func showReceivers() {
-	tom := person{name: "Tom", age: 24}
-	fmt.Println("before", tom.age) // before 24
-	tom.updateAgeOnCopy(33)        // inside 33
-	fmt.Println("after", tom.age)  // after 24
+func showSharingAndRange() {
+	array := [6]int{1, 2, 3, 4, 5, 6}
+	window := array[1:5]
+	array[1] = 22
+	fmt.Println(window) // [22 3 4 5]
+	window[1] = 33
+	fmt.Println(array) // [1 22 33 4 5 6]
 
-	older := tom.withAge(33)
-	fmt.Println(tom.age, older.age) // 24 33
+	alias := window[:1]
+	fmt.Println(len(window), len(alias)) // 4 1
 
-	var pointer *person = &tom
-	fmt.Println("before", tom.age) // before 24
-	pointer.updateAge(33)
-	fmt.Println("after", tom.age) // after 33
-	tom.updateAge(34)             // Сокращённая форма вызова (&tom).updateAge(34).
-	fmt.Println(tom.age)          // 34
+	users := []string{"Tom", "Alice", "Kate"}
+	fmt.Println(users[2]) // Kate
+	users[2] = "Katherine"
+	for _, name := range users {
+		fmt.Println(name) // Tom, Alice, Katherine на отдельных строках
+	}
+
+	scores := []int{1, 2, 3}
+	for index, score := range scores {
+		scores[index] = score * 10 // Получаем копию score, а пишем в элемент массива.
+	}
+	fmt.Println(scores) // [10 20 30]
 }
 
-func showAddressabilityAndInterfaces() {
-	tom := person{name: "Tom", age: 33}
-	team := []person{tom}
-	team[0].updateAge(35)
-	fmt.Println(team[0].age, tom.age) // 35 33
+func showRows() {
+	rows := [][]int{{1, 2}, {3, 4}, {5, 6, 7}}
+	rows[1][0] = 30
+	fmt.Println(rows) // [[1 2] [30 4] [5 6 7]]
 
-	people := map[string]person{"tom": tom}
-	// people["tom"].updateAge(36) // Ошибка компиляции: элемент карты неадресуем.
-	fmt.Println(people["tom"].currentAge()) // 33
-	// (person{name: "Bob"}).updateAge(40) // Ошибка компиляции: литерал неадресуем.
-
-	// var updater ageUpdater = tom // Ошибка компиляции: присваивание интерфейсу не подставляет &.
-	var updater ageUpdater = &tom
-	updater.updateAge(36)
-	fmt.Println(tom.age) // 36
+	grid := make([][]int, 2)
+	fmt.Println(grid[0] == nil) // true
+	grid[0] = make([]int, 3)
+	fmt.Println(grid) // [[0 0 0] []]
 }
 
-func showMethodFunctions() {
-	tom := person{age: 24}
-	readAge := tom.currentAge // Сохраняет копию tom при создании значения метода.
-	update := tom.updateAge   // Сохраняет адрес tom при создании значения метода.
-	update(33)
-	fmt.Println(readAge(), tom.age) // 24 33
+func showAppend() {
+	users := []string{"Tom", "Alice", "Kate"}
+	users = append(users, "Bob")
+	fmt.Println(users) // [Tom Alice Kate Bob]
 
-	readFrom := person.currentAge
-	updateFor := (*person).updateAge
-	updateFor(&tom, 40)                     // Выражение метода получает указатель первым аргументом.
-	fmt.Println(readFrom(tom))              // 40
-	fmt.Println((*person).currentAge(&tom)) // 40
-	// _ = person.updateAge // Ошибка компиляции: в наборе person этого метода нет.
+	var missing []int
+	missing = append(missing, 1, 2)
+	fmt.Println(missing) // [1 2]
+
+	array := [4]int{10, 20, 30, 40}
+	prefix := array[:2]
+	extended := append(prefix, 99)       // Свободная ёмкость позволяет перезаписать array[2].
+	fmt.Println(prefix, extended, array) // [10 20] [10 20 99] [10 20 99 40]
+
+	detached := append(array[:2:2], 77) // При len == cap выделяется новый массив.
+	detached[0] = 100
+	fmt.Println(detached, array) // [100 20 77] [10 20 99 40]
 }
 
-func showNilReceiver() {
-	var missing *person
-	fmt.Println(missing.nameOrUnknown()) // unknown
-	// missing.updateAge(33) // Паника при записи в поле через nil.
-	// missing.currentAge() // Паника при разыменовании nil до входа в метод.
+func showDelete() {
+	users := []string{"Bob", "Alice", "Kate", "Sam", "Tom", "Paul", "Mike", "Robert"}
+	original := users
+	index := 3
+	users = append(users[:index], users[index+1:]...)
+	fmt.Println(users)    // [Bob Alice Kate Tom Paul Mike Robert]
+	fmt.Println(original) // [Bob Alice Kate Tom Paul Mike Robert Robert]
+	clear(original[len(users):])
+	fmt.Printf("%q\n", original[len(users)]) // ""
 
-	var namer interface{ nameOrUnknown() string } = missing
-	fmt.Println(namer == nil, namer.nameOrUnknown()) // false unknown
+	values := []int{10, 20, 30, 40}
+	shortened := slices.Delete(values, 1, 3)
+	// Начиная с Go 1.22 хвост массива обнуляется.
+	fmt.Println(shortened, values) // [10 40] [10 40 0 0]
+}
+
+func showCopy() {
+	source := []int{1, 2, 3, 4, 5, 6}
+	empty := make([]int, 0, 6)
+	short := make([]int, 3)
+	long := make([]int, 8)
+	fmt.Println(copy(empty, source), empty) // 0 []
+	fmt.Println(copy(short, source), short) // 3 [1 2 3]
+	fmt.Println(copy(long, source), long)   // 6 [1 2 3 4 5 6 0 0]
+
+	overlapping := []int{1, 2, 3, 4}
+	copied := copy(overlapping[1:], overlapping[:3])
+	fmt.Println(copied, overlapping) // 3 [1 1 2 3]
+
+	cloned := slices.Clone(source)
+	cloned[0] = 99
+	fmt.Println(source[0], cloned[0]) // 1 99
+
+	rows := [][]int{{1, 2}}
+	clonedRows := slices.Clone(rows)
+	clonedRows[0][0] = 10         // Описания строк скопированы, но массивы строк общие.
+	fmt.Println(rows, clonedRows) // [[10 2]] [[10 2]]
+}
+
+func showSortAndSearch() {
+	users := []string{"Tom", "Bob", "Sam"}
+	fmt.Println(slices.Index(users, "Sam")) // 2
+	sort.Strings(users)
+	fmt.Println(users)                                                                // [Bob Sam Tom]
+	fmt.Println(sort.SearchStrings(users, "Sam"), sort.SearchStrings(users, "Alice")) // 1 0
+
+	values := []int{11, 22, 33, 44, 55, 66}
+	fmt.Println(sort.SearchInts(values, 33), sort.SearchInts(values, 45)) // 2 4
+	fmt.Println(slices.BinarySearch(values, 45))                          // 4 false
+
+	numbers := []int{3, 1, 2}
+	slices.Reverse(numbers)
+	fmt.Println(numbers) // [2 1 3]
+	sort.Sort(sort.Reverse(sort.IntSlice(numbers)))
+	fmt.Println(numbers) // [3 2 1]
+}
+
+func showComparison() {
+	first := []int{1, 2, 3, 4}
+	same := []int{1, 2, 3, 4}
+	short := []int{1, 2, 3}
+	// _ = first == same // Ошибка компиляции: два среза нельзя сравнить через ==.
+	fmt.Println(slices.Equal(first, same), slices.Equal(first, short)) // true false
+
+	var missing []int
+	fmt.Println(slices.Equal(missing, []int{}))                   // true
+	fmt.Println(reflect.DeepEqual(missing, []int{}))              // false
+	fmt.Println(reflect.DeepEqual(first, []string{"Tom", "Bob"})) // false
 }
