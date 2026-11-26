@@ -2,213 +2,160 @@ package main
 
 import "fmt"
 
+type library []string
+
+func (books library) print() {
+	for _, title := range books {
+		fmt.Println(title)
+	}
+}
+
+func (books library) replaceFirst(title string) {
+	books[0] = title // Вызывающая сторона передаёт непустой срез. Массив остаётся общим.
+}
+
+func (books library) keepFirst() {
+	books = books[:1] // Новая длина хранится только в локальном описании среза.
+	fmt.Println(len(books))
+}
+
+func (books *library) add(title string) {
+	*books = append(*books, title) // Сохраняем новое описание в исходной переменной.
+}
+
 type person struct {
 	name string
 	age  int
 }
 
-type account struct {
-	login   string
-	profile person
+func (p person) print() {
+	fmt.Println("Name:", p.name)
+	fmt.Println("Age:", p.age)
 }
 
-type member struct {
-	login string
-	person
+func (p person) eat(meal string) {
+	fmt.Println(p.name, "eats", meal)
 }
 
-type node struct {
-	value int
-	next  *node
+func (p person) currentAge() int {
+	return p.age
 }
 
-// type badNode struct{ next badNode } // Ошибка компиляции: рекурсия через поле по значению.
+func (p person) updateAgeOnCopy(newAge int) {
+	p.age = newAge // Меняется только поле получателя, то есть копии person.
+	fmt.Println("inside", p.age)
+}
+
+func (p person) withAge(newAge int) person {
+	p.age = newAge
+	return p
+}
+
+func (p *person) updateAge(newAge int) {
+	p.age = newAge // Сокращение для (*p).age = newAge.
+}
+
+func (p *person) nameOrUnknown() string {
+	if p == nil {
+		return "unknown"
+	}
+	return p.name
+}
+
+type ageReader interface{ currentAge() int }
+type ageUpdater interface{ updateAge(int) }
+
+// Эти присваивания проверяют наборы методов на этапе компиляции.
+var _ ageReader = person{}
+var _ ageReader = (*person)(nil)
+var _ ageUpdater = (*person)(nil)
+
+// var _ ageUpdater = person{} // Ошибка компиляции: набор person не содержит updateAge.
 
 func main() {
-	showInitialization()
-	showUnnamedStructs()
-	showPointers()
-	showCopies()
-	showComparison()
-	showEmbedding()
-	showLinkedList()
+	showLibrary()
+	showPerson()
+	showReceivers()
+	showAddressabilityAndInterfaces()
+	showMethodFunctions()
+	showNilReceiver()
 }
 
-func showInitialization() {
-	// Каждое поле получает нулевое значение своего типа.
-	var zero person
-	fmt.Printf("%q %d\n", zero.name, zero.age) // "" 0
+func showLibrary() {
+	lib := library{"Book1", "Book2", "Book3"}
+	lib.print() // Book1, Book2, Book3 на отдельных строках
 
-	tom := person{"Tom", 23}
-	alice := person{age: 23, name: "Alice"}
-	bob := person{name: "Bob"}
-	var empty = person{}
-	fmt.Println(tom, alice, bob, empty) // {Tom 23} {Alice 23} {Bob 0} { 0}
-	// _ = person{"Tom"} // Ошибка компиляции: позиционный литерал должен задать все поля.
-	// _ = person{"Tom", age: 23} // Ошибка компиляции: нельзя смешивать формы литерала.
+	lib.replaceFirst("Go")
+	fmt.Println(lib)      // [Go Book2 Book3]
+	lib.keepFirst()       // 1
+	fmt.Println(len(lib)) // 3
 
-	tom.age = 38
-	fmt.Println(tom.name, tom.age) // Tom 38
-
-	// Этот тип объявлен в блоке функции. Два поля одного типа записаны вместе.
-	type employee struct {
-		name, company string
-		age           int
-	}
-	var employeeTom employee = employee{name: "Tom", company: "Acme", age: 38}
-	fmt.Println(employeeTom.company) // Acme
+	lib.add("Book4") // lib адресуемая. Метод получает &lib и обновляет описание среза.
+	fmt.Println(lib) // [Go Book2 Book3 Book4]
 }
 
-func showUnnamedStructs() {
-	// Неименованный тип можно записать при объявлении переменной.
-	var tom struct {
-		name string
-		age  int
-	}
-	tom.name = "Tom"
-	tom.age = 23
-
-	bob := struct {
-		name string
-		age  int
-	}{
-		name: "Bob",
-		age:  41,
-	}
-	// Базовые типы совпадают, а тип bob неименованный.
-	var named person = bob
-	fmt.Println(tom.name, tom.age, named.name, named.age) // Tom 23 Bob 41
+func showPerson() {
+	tom := person{name: "Tom", age: 24}
+	tom.print()                   // Name: Tom, затем Age: 24 на новой строке
+	tom.eat("apples")             // Tom eats apples
+	fmt.Println(tom.currentAge()) // 24
 }
 
-func showPointers() {
-	tom := person{name: "Tom", age: 22}
+func showReceivers() {
+	tom := person{name: "Tom", age: 24}
+	fmt.Println("before", tom.age) // before 24
+	tom.updateAgeOnCopy(33)        // inside 33
+	fmt.Println("after", tom.age)  // after 24
+
+	older := tom.withAge(33)
+	fmt.Println(tom.age, older.age) // 24 33
+
 	var pointer *person = &tom
-	// Селектор автоматически разыменовывает указатель при обращении к полю.
-	fmt.Println(pointer.name, (*pointer).age) // Tom 22
-	pointer.age = 23
-	fmt.Println(tom.age) // 23
-	age := &tom.age
-	*age = 35
-	fmt.Println(tom.age) // 35
+	fmt.Println("before", tom.age) // before 24
+	pointer.updateAge(33)
+	fmt.Println("after", tom.age) // after 33
+	tom.updateAge(34)             // Сокращённая форма вызова (&tom).updateAge(34).
+	fmt.Println(tom.age)          // 34
+}
 
-	// new(person) возвращает указатель на новую переменную с нулевым значением.
-	zero := new(person)
-	fmt.Println(*zero) // { 0}
-	zero.name = "Tom"
-	zero.age = 41
-	fmt.Println(*zero) // {Tom 41}
+func showAddressabilityAndInterfaces() {
+	tom := person{name: "Tom", age: 33}
+	team := []person{tom}
+	team[0].updateAge(35)
+	fmt.Println(team[0].age, tom.age) // 35 33
 
-	alice := &person{name: "Alice", age: 23}
-	fmt.Println(*alice) // {Alice 23}
-
-	anonymous := new(struct {
-		name, company string
-		age           int
-	})
-	anonymous.name = "Bob"
-	anonymous.company = "Acme"
-	anonymous.age = 46
-	fmt.Println(*anonymous) // {Bob Acme 46}
-
-	// var missing *person
-	// fmt.Println(missing.age) // Паника: чтение поля через nil.
-
-	// Запись в карту обновляет целое значение. Поле элемента карты неадресуемо.
 	people := map[string]person{"tom": tom}
-	// people["tom"].age++ // Ошибка компиляции: поле элемента карты неадресуемо.
-	updated := people["tom"]
-	updated.age++
-	people["tom"] = updated
-	fmt.Println(people["tom"].age, tom.age) // 36 35
+	// people["tom"].updateAge(36) // Ошибка компиляции: элемент карты неадресуем.
+	fmt.Println(people["tom"].currentAge()) // 33
+	// (person{name: "Bob"}).updateAge(40) // Ошибка компиляции: литерал неадресуем.
+
+	// var updater ageUpdater = tom // Ошибка компиляции: присваивание интерфейсу не подставляет &.
+	var updater ageUpdater = &tom
+	updater.updateAge(36)
+	fmt.Println(tom.age) // 36
 }
 
-func showCopies() {
-	tom := person{name: "Tom", age: 41}
-	copyOfTom := tom
-	copyOfTom.age = 18
-	fmt.Println(tom.age, copyOfTom.age) // 41 18
+func showMethodFunctions() {
+	tom := person{age: 24}
+	readAge := tom.currentAge // Сохраняет копию tom при создании значения метода.
+	update := tom.updateAge   // Сохраняет адрес tom при создании значения метода.
+	update(33)
+	fmt.Println(readAge(), tom.age) // 24 33
 
-	older := nextBirthday(tom)
-	fmt.Println(tom.age, older.age) // 41 42
-	incrementAge(&tom)
-	fmt.Println(tom.age) // 42
-
-	type profile struct {
-		owner person
-		tags  []string
-	}
-	original := profile{owner: tom, tags: []string{"go"}}
-	copied := original
-	copied.owner.age = 18
-	// Поле owner скопировано по значению. Оба среза по-прежнему используют общий массив.
-	copied.tags[0] = "struct"
-	fmt.Println(original.owner.age, copied.owner.age, original.tags[0]) // 42 18 struct
-
-	copied.tags = []string{"copy"}
-	fmt.Println(original.tags[0], copied.tags[0]) // struct copy
+	readFrom := person.currentAge
+	updateFor := (*person).updateAge
+	updateFor(&tom, 40)                     // Выражение метода получает указатель первым аргументом.
+	fmt.Println(readFrom(tom))              // 40
+	fmt.Println((*person).currentAge(&tom)) // 40
+	// _ = person.updateAge // Ошибка компиляции: в наборе person этого метода нет.
 }
 
-func nextBirthday(value person) person {
-	value.age++
-	return value
-}
+func showNilReceiver() {
+	var missing *person
+	fmt.Println(missing.nameOrUnknown()) // unknown
+	// missing.updateAge(33) // Паника при записи в поле через nil.
+	// missing.currentAge() // Паника при разыменовании nil до входа в метод.
 
-func incrementAge(value *person) {
-	value.age++
-}
-
-func showComparison() {
-	tom := person{name: "Tom", age: 41}
-	bob := person{name: "Bob", age: 41}
-	tomas := person{name: "Tom", age: 41}
-	fmt.Println(tom == bob, tom == tomas, &tom == &tomas) // false true false
-
-	// Ключи сравниваются по значению, поэтому tomas находит запись для tom.
-	roleByPerson := map[person]string{tom: "admin"}
-	fmt.Println(roleByPerson[tomas]) // admin
-
-	// _ = struct{ tags []string }{} == struct{ tags []string }{} // Ошибка компиляции: поле-срез.
-	// entry := struct{ value interface{} }{value: []int{1}}
-	// fmt.Println(entry == entry) // Паника: динамический тип []int несравним.
-}
-
-func showEmbedding() {
-	tom := account{login: "tom", profile: person{name: "Tom", age: 41}}
-	alice := member{login: "alice", person: person{name: "Alice", age: 23}}
-	fmt.Println(tom.profile.name)              // Tom
-	fmt.Println(alice.name, alice.person.name) // Alice Alice
-
-	// Имена встроенных полей здесь совпадают с именами их типов.
-	record := struct {
-		string
-		company string
-		int
-	}{string: "Tom", company: "Acme", int: 41}
-	fmt.Println(record.string, record.company, record.int) // Tom Acme 41
-	// type duplicate struct{ string; string } // Ошибка компиляции: два поля string.
-
-	type nickname struct{ name string }
-	colliding := struct {
-		person
-		nickname
-	}{person: alice.person, nickname: nickname{name: "Al"}}
-	// fmt.Println(colliding.name) // Ошибка компиляции: два поля name на одной глубине.
-	fmt.Println(colliding.person.name, colliding.nickname.name) // Alice Al
-
-	var linked struct{ *person }
-	fmt.Println(linked.person == nil) // true
-	// fmt.Println(linked.name) // Паника: продвинутое поле читается через nil.
-}
-
-func showLinkedList() {
-	first := node{value: 4}
-	second := node{value: 5}
-	third := node{value: 6}
-	first.next = &second
-	second.next = &third
-
-	// У последнего узла next равен nil. Цикл выводит значения по одному на строку.
-	for current := &first; current != nil; current = current.next {
-		fmt.Println(current.value) // 4, 5, 6 на отдельных строках
-	}
+	var namer interface{ nameOrUnknown() string } = missing
+	fmt.Println(namer == nil, namer.nameOrUnknown()) // false unknown
 }
