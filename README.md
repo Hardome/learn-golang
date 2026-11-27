@@ -5,8 +5,8 @@
 
 ## Формы `for`
 
-- `for i := 1; i <= 4; i++` — Объявляет счётчик один раз, проверяет условие перед каждой итерацией и увеличивает счётчик
-  после неё.
+- `for i := 1; i <= 4; i++` — Задаёт начальное значение счётчика, проверяет условие перед каждой итерацией и
+  выполняет шаг `i++` после неё.
 - `for power < 10` — Повторяет тело, пока условие истинно. Условие проверяется перед каждой итерацией.
 - `for { ... }` — Повторяет тело без проверки условия.
 - `for index, value := range numbers` — Перебирает массив, возвращая индекс и значение каждого элемента.
@@ -153,7 +153,7 @@ for i := range 3 {
 
 - [Формы for](https://go.dev/ref/spec#For_statements)
 - [Правила range](https://go.dev/ref/spec#For_range)
-- [Команды перехода break и continue](https://go.dev/ref/spec#Break_statements)
+- [break](https://go.dev/ref/spec#Break_statements) и [continue](https://go.dev/ref/spec#Continue_statements)
 - [Семантика переменных циклов](https://go.dev/doc/go1.22#language)
 - [Итераторы в range](https://go.dev/doc/go1.23#language)
 - [Выбор семантики по версии модуля](https://go.dev/blog/loopvar-preview)
