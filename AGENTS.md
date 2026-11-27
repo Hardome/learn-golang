@@ -8,9 +8,13 @@ hyphen-separated English topic.
 
 ## Lesson Content
 
-Cover the topic end to end at senior interview depth. Explain language guarantees, important subtleties, practical
-trade-offs, and all relevant edge cases. Identify implementation details and version-dependent behavior explicitly when
-they affect the result.
+Stay within the current lesson topic. When the user provides material, use its questions and examples as the basis.
+Correct inaccuracies and add only edge cases that change the result or clarify a rule of this topic. Mention adjacent
+topics briefly or link to them.
+
+Explain what happens and why in enough detail to understand the rule. Keep commands and routine steps brief. Use one
+short example per rule by default and add another when it demonstrates different behavior. Cut repetition and prose
+that adds no understanding. Let the explanation determine the length.
 
 - `README.md` explains the lesson in Russian and stands on its own. Introduce the topic up front and include the
   context, definitions, and short examples readers need to understand it without opening `hello.go`.
@@ -34,8 +38,9 @@ Keep each list item or paragraph focused on one point. Use separate paragraphs o
 
 ## Official Sources
 
-Add an `Источники` section to every lesson README. Use official sources only and link directly to the sections or API
-symbols that support the lesson.
+Verify every technical claim against official Go sources, including claims from material the user provides. Check
+command behavior, example output, and Go version differences. Correct inaccuracies and fill gaps that matter to the
+current topic. In `Источники`, link to the exact documentation sections or API symbols that support the lesson.
 
 - Use the language specification for syntax and semantic guarantees.
   [Go Language Specification](https://go.dev/ref/spec)
