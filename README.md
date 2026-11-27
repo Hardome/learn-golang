@@ -1,116 +1,83 @@
-# Урок 025. Загрузка внешних зависимостей
+# Урок 026. Управление зависимостями с помощью папки vendor
 
-Внешний пакет можно импортировать в свой код так же, как пакет стандартной библиотеки. Команда `go` берёт
-внешний пакет из версии модуля, выбранной для проекта. В этом уроке подключим демонстрационный пакет
-`rsc.io/quote`, вызовем две функции и посмотрим, как меняются `go.mod` и `go.sum`.
+Каталог `vendor` хранит копии внешних пакетов рядом с кодом проекта. В режиме vendoring Go берёт из этого
+каталога пакеты, нужные для сборки и тестов. С уже установленным подходящим Go проект можно собрать даже
+при пустом кеше модулей и без доступа к сети. Это удобно, например, для сборок в CI без доступа к прокси Go.
 
-## Добавление зависимости
+Возьмём готовый пример из [урока 025 о внешних зависимостях][dependencies-lesson]. Пакет `rsc.io/quote` уже
+импортируется в [hello.go](hello.go), а его версия указана в [go.mod](go.mod).
 
-В новом каталоге сначала выполните `go mod init example.org/quotes`. Команда создаст в нём `go.mod`.
-У этого урока уже есть [go.mod](go.mod), поэтому готовый пример можно сразу запустить из корня репозитория.
+## Как создать vendor
 
-Чтобы добавить зависимость в новый модуль, выполните:
+Из корня модуля выполните `go mod vendor`. В этой ветке каталог уже сгенерирован. Go копирует пакеты,
+которые нужны для сборки и тестирования пакетов текущего модуля, включая транзитивные импорты. Из одного
+модуля в `vendor` могут попасть только отдельные пакеты. Зависимости, нужные исключительно тестам
+внешних модулей, в каталог не входят.
 
-```text
-go get rsc.io/quote@v1.5.2
-```
-
-`rsc.io/quote` здесь одновременно путь импорта пакета и путь модуля, потому что пакет находится в корне
-модуля. Суффикс `@v1.5.2` запрашивает конкретную версию. В режиме модулей начиная с Go 1.18 команда
-`go get` управляет зависимостями проекта. Она обновляет требования в `go.mod` и при необходимости
-скачивает модули. После первого скачивания в примере появляется и `go.sum`.
-
-Пока исходники проекта ещё не импортируют `rsc.io/quote`, команда добавляет запись с пометкой `// indirect`:
+Go записывает пути пакетов и версии их модулей в [vendor/modules.txt](vendor/modules.txt).
+В этом файле есть такая запись.
 
 ```text
-rsc.io/quote v1.5.2 // indirect
+# rsc.io/quote v1.5.2
+## explicit
+rsc.io/quote
 ```
 
-## Импорт пакета и запуск
+Первая строка указывает путь и версию модуля, последняя — путь скопированного пакета.
+Метка `explicit` означает, что модуль указан в директиве `require` в `go.mod`. Она также встречается
+у требований с пометкой `// indirect`.
 
-Создайте `hello.go` в корне нового модуля. Готовый пример лежит в [hello.go](hello.go).
+## Сборка из vendor
 
-```go
-package main
-
-import (
-	"fmt"
-
-	"rsc.io/quote" // Пакет из внешнего модуля.
-)
-
-func main() {
-	// Обе функции возвращают фиксированные строки.
-	fmt.Println(quote.Go())  // Don't communicate by sharing memory, share memory by communicating.
-	fmt.Println(quote.Opt()) // If a program is too slow, it must have a loop.
-}
-```
-
-В `import` указывают путь пакета. Версия хранится в требованиях модуля. Из его корня выполните
-`go mod tidy`, затем `go run .`. Программа напечатает две строки, указанные в комментариях.
-
-### Прямые и косвенные зависимости
-
-После добавления импорта `go mod tidy` убирает у `rsc.io/quote` пометку `// indirect`, потому что теперь
-его пакет импортируется в `hello.go`. Пакет `quote` использует `rsc.io/sampler`, а тот использует
-`golang.org/x/text`. Для нашего модуля это косвенные зависимости. В `go.mod` урока получились такие требования:
+Начиная с Go 1.14, команды сборки автоматически выбирают `vendor`, если каталог лежит в корне модуля
+и директива `go` в `go.mod` указывает версию 1.14 или выше. Для этого урока достаточно `go run .`.
+Режим можно указать явно.
 
 ```text
-require rsc.io/quote v1.5.2
-
-require (
-	golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c // indirect
-	rsc.io/sampler v1.3.0 // indirect
-)
+go run -mod=vendor .
+go build -mod=vendor .
 ```
 
-## Контрольные суммы и кеш модулей
+Флаг `-mod=vendor` для `go run` ставят перед точкой. Всё после точки передаётся запущенной программе.
+Если нужного пакета нет в `vendor`, сборка завершится ошибкой. Чтобы явно собрать из кеша модулей
+с загрузкой недостающих зависимостей при необходимости, используйте `go build -mod=mod .`.
 
-В [go.sum](go.sum) Go хранит контрольные суммы, чтобы при загрузке проверить целостность модулей. Для
-`rsc.io/quote` в нём есть две строки:
+## Как обновить vendor
+
+При обновлении зависимости из примера выполните команды по порядку.
 
 ```text
-rsc.io/quote v1.5.2 h1:w5fcysjrx7yqtD/aO+QwRjYZOKnaM9Uh2b40tElTs3Y=
-rsc.io/quote v1.5.2/go.mod h1:LzX7hefJvL54yjefDEDHNONDjII0t9xZLPXsUe+TKr0=
+go get rsc.io/quote@latest
+go mod tidy
+go mod vendor
 ```
 
-Первая сумма относится к содержимому архива модуля, вторая проверяет только его `go.mod`.
-Сохраняйте `go.mod` и `go.sum` в Git вместе с кодом проекта.
+Последняя команда пересоздаёт каталог целиком, поэтому ручные правки в нём будут потеряны.
+После изменения импортов достаточно выполнить `go mod tidy` и `go mod vendor`. `go get`, `go mod tidy` и
+`go mod vendor` могут обращаться к кешу модулей и сети даже при наличии `vendor`.
 
-Загруженные модули лежат в общем для проектов кеше `GOMODCACHE`. По умолчанию это каталог `pkg/mod`
-в первом каталоге `GOPATH`. Фактические пути можно посмотреть командами:
+### Если Go сообщает об ошибке
 
-```text
-go env GOPATH
-go env GOMODCACHE
-```
+- `inconsistent vendoring` означает, что требования из `go.mod` расходятся с `vendor/modules.txt`.
+  Запустите `go mod vendor` ещё раз.
+- Предупреждение `"all" matched no packages` при запуске `go mod vendor` в пустом модуле означает,
+  что Go не нашёл пакетов для обработки. Добавьте исходники с импортом зависимости и повторите команду.
 
-## Что меняет go mod tidy
+## Когда хранить vendor в Git
 
-`go mod tidy` приводит `go.mod` и `go.sum` в соответствие с импортами проекта и их зависимостями,
-включая импорты из тестов.
-
-- Если в новом модуле сначала написать импорт `rsc.io/quote` и выполнить `go mod tidy`, Go сам найдёт
-  модуль для этого пакета и добавит требование. `go get rsc.io/quote@v1.5.2` позволяет явно указать версию.
-- Если в пробном проекте убрать импорт `rsc.io/quote` и заменить оба вызова одной строкой
-  `fmt.Println("Готово")`, после `go mod tidy` блоки `require` исчезнут, а `go.sum` опустеет или будет
-  удалён. Все три модуля больше не нужны этому проекту. Их файлы сохранятся в кеше.
-
-О пути модуля и структуре `go.mod` подробнее в [уроке 023 о модулях][modules-lesson].
+Если репозиторий должен собираться без скачивания внешних пакетов, сохраняйте `vendor` вместе с `go.mod`
+и `go.sum`. Это увеличивает размер репозитория, но позволяет получить исходники зависимостей при
+клонировании. Если ваш модуль используют как библиотеку, его `vendor` может пригодиться для сборки самой
+библиотеки. Проекты, которые её импортируют, используют правила разрешения зависимостей своего модуля.
 
 ## Источники
 
-- [Go Modules Reference · go mod init](https://go.dev/ref/mod#go-mod-init)
+- [Go Modules Reference · Vendoring](https://go.dev/ref/mod#vendoring)
+- [Go Modules Reference · go mod vendor](https://go.dev/ref/mod#go-mod-vendor)
+- [Go Modules Reference · Build commands](https://go.dev/ref/mod#build-commands)
 - [Go Modules Reference · go get](https://go.dev/ref/mod#go-get)
-- [Go 1.18 Release Notes · go get](https://go.dev/doc/go1.18#go-get)
-- [Go Modules Reference · require](https://go.dev/ref/mod#go-mod-file-require)
-- [Go Modules Reference · go mod tidy](https://go.dev/ref/mod#go-mod-tidy)
-- [Go Modules Reference · go.sum files](https://go.dev/ref/mod#go-sum-files)
-- [Go Modules Reference · Module cache](https://go.dev/ref/mod#module-cache)
-- [cmd/go · go env](https://pkg.go.dev/cmd/go#hdr-Print_Go_environment_information)
+- [Go 1.14 Release Notes · Vendoring](https://go.dev/doc/go1.14#vendoring)
 - [cmd/go · go run](https://pkg.go.dev/cmd/go#hdr-Compile_and_run_Go_program)
-- [quote.Go](https://pkg.go.dev/rsc.io/quote@v1.5.2#Go) · [quote.Opt](https://pkg.go.dev/rsc.io/quote@v1.5.2#Opt)
-- [rsc.io/quote · go.mod](https://github.com/rsc/quote/blob/v1.5.2/go.mod)
-- [rsc.io/sampler · go.mod](https://github.com/rsc/sampler/blob/v1.3.0/go.mod)
+- [Исходный код go mod vendor · формирование modules.txt](https://go.dev/src/cmd/go/internal/modcmd/vendor.go)
 
-[modules-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-023-modules
+[dependencies-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-025-external-dependencies
