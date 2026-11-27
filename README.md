@@ -19,50 +19,21 @@ type person struct {
 `struct { ... }` описывает поля. `type person` даёт описанной структуре имя. После этого
 `person` можно использовать в объявлениях переменных, полей и параметров функций.
 
-### Поля одного типа и область видимости
-
-```go
-func showEmployee() {
-    type employee struct {
-        name, company string // Два отдельных поля типа string.
-        age           int
-    }
-
-    tom := employee{name: "Tom", company: "Acme", age: 38}
-    fmt.Println(tom.company) // Acme. Точка выбирает поле company.
-}
-
-// Здесь имя employee уже вне области видимости.
-```
-
-Тип `person`, объявленный на уровне файла, доступен во всех файлах того же пакета.
-Имя `employee` из примера доступно внутри блока функции. Для доступа к полю из другого пакета
-его имя должно начинаться с заглавной буквы, например `Name`. Имена полей уникальны внутри
-структуры. Исключение — пустой идентификатор `_`, который нельзя выбрать через точку.
+Имена полей в одной структуре уникальны, кроме `_`: такое поле нельзя выбрать через точку.
+Поле доступно из другого пакета, если его имя начинается с заглавной буквы. Объявление типа на уровне пакета
+видно во всех файлах пакета, а объявление внутри функции действует в своём блоке.
 
 ## Создание значения и изменение полей
 
 ### Нулевое значение
 
+Каждое поле получает нулевое значение своего типа. Если поле само является структурой или массивом,
+это правило применяется к его полям или элементам.
+
 ```go
-var tom person // Пока ни одному полю не задано начальное значение вручную.
+var tom person
 fmt.Printf("%q %d\n", tom.name, tom.age) // "" 0
-
-empty := person{}        // Пустой литерал даёт то же нулевое значение.
-fmt.Println(tom == empty) // true
-```
-
-У строки нулевое значение — `""`, у числа — `0`, у `bool` — `false`. У указателей, срезов, карт,
-каналов, функций и интерфейсов — `nil`. Если поле само является структурой или массивом,
-правило применяется к его полям или элементам.
-
-```go
-var directory struct {
-    people map[string]person // Нулевая карта равна nil.
-}
-fmt.Println(directory.people == nil) // true
-fmt.Println(directory.people["tom"]) // { 0}. Чтение отсутствующего ключа даёт нулевой person.
-// directory.people["tom"] = person{name: "Tom"} // Паника: запись в nil-карту.
+fmt.Println(tom == (person{}))          // true, пустой литерал даёт то же значение.
 ```
 
 ### Позиционный литерал и литерал с именами
@@ -77,10 +48,8 @@ fmt.Println(tom, alice, bob)              // {Tom 23} {Alice 23} {Bob 0}
 // _ = person{"Tom", age: 23}  // Ошибка компиляции: нельзя смешивать позиции и имена.
 ```
 
-Литерал с именами показывает, к какому полю относится каждое значение. Его проще читать,
-если поля имеют одинаковые типы. Неэкспортируемое поле типа из другого пакета нельзя явно
-заполнить в литерале. Внутри функции можно использовать как `var tom = person{...}`, так и
-`tom := person{...}`. В обоих случаях Go выводит тип переменной из правой части.
+Имена в литерале помогают различить поля одного типа. Неэкспортируемое поле структуры из другого пакета нельзя
+явно заполнить в литерале.
 
 ### Чтение и запись через точку
 
@@ -94,27 +63,7 @@ fmt.Println(tom.name, tom.age) // Tom 38
 
 ## Неименованная структура
 
-Тип можно записать прямо там, где нужна переменная. У такого типа нет своего имени, но у полей
-имена есть, поэтому к ним по-прежнему обращаются через точку.
-
-```go
-var tom struct {
-    name string
-    age  int
-}
-tom.name = "Tom" // Переменная уже существует. Заполняем её нулевые поля.
-tom.age = 23
-
-bob := struct {
-    name string
-    age  int
-}{ // Первый блок задаёт тип, второй — значения его полей.
-    name: "Bob",
-    age:  41,
-}
-
-fmt.Println(tom.name, tom.age, bob.name, bob.age) // Tom 23 Bob 41
-```
+Тип можно записать прямо в объявлении или литерале. К полям такой структуры обращаются через точку.
 
 ### Когда типы совместимы
 
@@ -181,44 +130,22 @@ fmt.Println(tom.age) // 23
 
 ## `new` и адрес литерала
 
-### Нулевая структура по указателю
+`new(person)` создаёт нулевую структуру и возвращает указатель. Выражение `&person{...}` сразу задаёт поля.
+С Go 1.26 `new(value)` создаёт отдельную переменную и копирует туда переданное значение.
 
 ```go
-tom := new(person)         // Создаём нулевой person и получаем его адрес.
-fmt.Println(*tom)          // { 0}
-tom.name, tom.age = "Tom", 41
-fmt.Println(*tom)          // {Tom 41}
+zero := new(person)
+fmt.Println(zero.age) // 0, поле получило нулевое значение.
 
-bob := new(struct {
-    name, company string
-    age           int
-})
-bob.name, bob.company, bob.age = "Bob", "Acme", 46
-fmt.Println(*bob) // {Bob Acme 46}
+tom := &person{name: "Tom", age: 23}
+fmt.Println(tom.name, tom.age) // Tom 23
+
+copied := new(*tom) // Go 1.26+. Копируется структура по адресу tom.
+copied.age++
+fmt.Println(tom.age, copied.age) // 23 24
 ```
 
-### Указатель и начальные поля в одном выражении
-
-```go
-alice := &person{name: "Alice", age: 23} // Новая переменная с заданными полями.
-fmt.Println(*alice) // {Alice 23}
-
-fmt.Println(*new(person) == *(&person{})) // true. Сравниваем значения двух переменных.
-// _ = make(person) // Ошибка компиляции: make применяют к срезам, картам и каналам.
-```
-
-В Go 1.26 у `new` появилась дополнительная форма с выражением. Его значение используется
-как начальное значение новой переменной.
-
-```go
-tom := person{name: "Tom", age: 22}
-copyOfTom := new(tom) // Go 1.26+. Создаём новую переменную и копируем в неё значение tom.
-copyOfTom.age++
-fmt.Println(tom.age, copyOfTom.age) // 22 23
-```
-
-Место хранения выбирает реализация. В текущем компиляторе на выбор между стеком и кучей
-влияет анализ убегания (escape analysis).
+Подробнее о том, где хранится переменная и как работают указатели, см. в уроке 016.
 
 ## Копирование и параметры функций
 
@@ -438,33 +365,11 @@ linked.person = &person{name: "Tom", age: 41}
 fmt.Println(linked.name) // Tom. Теперь селектор идёт через действующий указатель.
 ```
 
-### Продвижение методов и набор методов
+### Продвижение методов
 
-```go
-func (value person) displayName() string { return value.name }
-func (value *person) birthday()          { value.age++ }
-
-type hasName interface{ displayName() string }
-type hasBirthday interface{ birthday() }
-
-var _ hasName = member{}          // Встроенный person продвигает метод с получателем person.
-var _ hasBirthday = &member{}     // У *member есть и метод с получателем *person.
-var _ hasBirthday = linkedMember{} // Встроенный *person продвигает оба вида методов.
-// var _ hasBirthday = member{}  // Ошибка: в наборе методов member нет birthday.
-```
-
-Встраивание `T` продвигает методы получателя `T` в `S` и `*S`, а методы получателя `*T` — в `*S`.
-Встраивание `*T` продвигает обе группы в `S` и `*S`. Здесь `S` — внешняя структура.
-При конфликте имён применяются правила выбора селектора. Встроенный указатель может оставаться
-`nil`, даже если внешний тип удовлетворяет интерфейсу.
-
-```go
-alice := member{person: person{name: "Alice", age: 23}}
-alice.birthday() // alice адресуемая. Go может вызвать этот метод через &alice.
-fmt.Println(alice.displayName(), alice.age) // Alice 24
-
-// Вызов через адресуемую переменную допустим, но member по-прежнему не реализует hasBirthday.
-```
+Методы встроенного поля тоже могут быть доступны через внешнюю структуру. Какие методы входят в её набор,
+зависит от того, встроено значение `T` или указатель `*T`. Правила и примеры вызовов см. в
+[уроке 019 о методах][methods-lesson].
 
 ## Рекурсивные структуры
 
@@ -500,21 +405,10 @@ fmt.Println(string(encoded), err) // {"name":"Tom"} <nil>
 Тег — часть описания поля и участвует в идентичности типа. Смысл тега определяет читающая
 его библиотека. В примере `json` импортируется из `encoding/json`.
 
-### Размер структуры и пустая структура
+### Размер и выравнивание
 
-```go
-size := unsafe.Sizeof(struct{ flag byte; count int64 }{})
-fmt.Println(size) // Например, 16 на amd64 с компилятором Go.
-
-fmt.Println(unsafe.Sizeof(struct{}{})) // 0
-seen := map[string]struct{}{"Tom": {}}
-_, ok := seen["Tom"] // Пустое значение ничего не хранит. Наличие ключа показывает ok.
-fmt.Println(ok) // true
-```
-
-`unsafe.Sizeof` включает промежутки для выравнивания. Для поля-указателя или среза он учитывает
-размер самого поля, тогда как отдельные данные могут занимать другую область памяти.
-Расположение полей и размеры зависят от архитектуры и реализации.
+`unsafe.Sizeof` учитывает промежутки между полями для выравнивания. Размер зависит от архитектуры и реализации.
+Размер `struct{}{}` равен нулю.
 
 См. также [урок 016 об указателях](https://github.com/Hardome/learn-golang/tree/lesson-016-pointers)
 и [урок 017 об определениях типов](https://github.com/Hardome/learn-golang/tree/lesson-017-type-aliases).
@@ -522,7 +416,7 @@ fmt.Println(ok) // true
 ## Источники
 
 - [Спецификация Go — структуры и встроенные поля](https://go.dev/ref/spec#Struct_types)
-- [Спецификация Go — литералы структур](https://go.dev/ref/spec#Struct_literals)
+- [Спецификация Go — литералы структур](https://go.dev/ref/spec#Composite_literals)
 - [Спецификация Go — область видимости](https://go.dev/ref/spec#Declarations_and_scope)
 - [Спецификация Go — экспорт имён](https://go.dev/ref/spec#Exported_identifiers)
 - [Спецификация Go — идентичность типов](https://go.dev/ref/spec#Type_identity)
@@ -538,8 +432,10 @@ fmt.Println(ok) // true
 - [Спецификация Go — типы карт и их ключей](https://go.dev/ref/spec#Map_types)
 - [Спецификация Go — размеры и выравнивание](https://go.dev/ref/spec#Size_and_alignment_guarantees)
 - [Effective Go — составные литералы](https://go.dev/doc/effective_go#composite_literals)
-- [Заметки о выпуске Go 1.26 — выражение как аргумент new](https://go.dev/doc/go1.26#language)
-- [FAQ Go — размещение переменных](https://go.dev/doc/faq#stack_or_heap)
+- [Go 1.26 — выражение как аргумент new](https://go.dev/doc/go1.26#language) и
+  [Go 1.27 — селекторы в литералах структур](https://go.dev/doc/go1.27#language).
 - [Стандартная библиотека — sync.Mutex](https://pkg.go.dev/sync#Mutex)
 - [Стандартная библиотека — encoding/json.Marshal](https://pkg.go.dev/encoding/json#Marshal)
 - [Стандартная библиотека — unsafe.Sizeof](https://pkg.go.dev/unsafe#Sizeof)
+
+[methods-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-019-methods
