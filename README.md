@@ -9,7 +9,7 @@ package main
 import "fmt"
 
 func main() {
-    fmt.Println("Hello, world!")
+    fmt.Println("Hello, world!") // Hello, world!
 }
 ```
 
@@ -32,22 +32,18 @@ func main() {
 команда `go` собирает указанные Go-файлы из одного каталога как один пакет. Это позволяет запускать отдельный урок без
 `go.mod`.
 
-## Что важно на собеседовании
+## Когда запускается main
 
-- До вызова `main` Go инициализирует импортируемые пакеты и сам пакет `main`. При инициализации пакета сначала
-  вычисляются переменные уровня пакета, затем вызываются его функции `init`.
-- Функция `main` должна принадлежать пакету `main`. При её возврате процесс завершается сразу, даже если другие горутины
-  ещё работают.
-- Импорты действуют в пределах конкретного файла. Неиспользуемый обычный импорт вызывает ошибку компиляции. Запись
-  `import _ "path"` используют для явно нужных эффектов инициализации пакета.
-- `fmt.Println` пишет в стандартный вывод, разделяет несколько аргументов пробелами и добавляет перевод строки. Функция
-  возвращает число записанных байтов и ошибку. В примере результаты вызова опущены для краткости.
+Go сначала инициализирует пакеты, затем вызывает `main`. Когда `main` возвращается, программа завершается.
+Подробнее о запуске и импортах см. в [уроке 022][packages].
+
+[packages]: https://github.com/Hardome/learn-golang/tree/lesson-022-packages-and-imports
 
 ## Источники
 
 - [Точка входа и завершение программы](https://go.dev/ref/spec#Program_execution)
-- [Порядок инициализации пакета](https://go.dev/ref/spec#Package_initialization)
 - [Правила импорта](https://go.dev/ref/spec#Import_declarations)
-- [Команды go run и go build](https://pkg.go.dev/cmd/go)
+- [go run](https://pkg.go.dev/cmd/go#hdr-Compile_and_run_Go_program) и
+  [go build](https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies)
 - [fmt.Println](https://pkg.go.dev/fmt#Println)
 - [Установка Go](https://go.dev/doc/install)
