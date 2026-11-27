@@ -35,6 +35,7 @@ that adds no understanding. Let the explanation determine the length.
 Limit Markdown source lines to 120 characters, including `README.md` and `AGENTS.md`.
 
 Keep each list item or paragraph focused on one point. Use separate paragraphs or headings for distinct concepts.
+Use numbered lists for ordered steps and bullet lists for independent points.
 
 ## Official Sources
 
@@ -62,8 +63,12 @@ Run these commands from the repository root on the lesson branch:
 Compare the program's output with the comments near the example calls in `hello.go`. The generated executables are
 ignored by Git.
 
-There is no `go.mod` or coverage target. If a lesson needs regression tests, use Go's `testing` package in
-`hello_test.go`, name functions `TestSomething`, and run `go test hello.go hello_test.go`.
+For a multi-file example, also verify the documented command that includes all its files. If the lesson has
+a `go.mod`, also verify `go run .`, `go build .`, and `go vet ./...`.
+
+There is no coverage target. If a single-file lesson without a module needs regression tests, use `hello_test.go`
+and run `go test hello.go hello_test.go`. For a lesson with a module, run `go test ./...`.
+Name the tests `TestSomething` and use Go's `testing` package.
 
 ## Commits and Pull Requests
 
