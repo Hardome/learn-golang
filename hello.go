@@ -2,188 +2,174 @@ package main
 
 import (
 	"fmt"
+	"maps"
+	"math"
 	"reflect"
 	"slices"
-	"sort"
+	"sync"
 )
 
 func main() {
-	showCreation()
-	showSliceExpressions()
-	showSharingAndRange()
-	showRows()
-	showAppend()
-	showDelete()
-	showCopy()
-	showSortAndSearch()
-	showComparison()
+	demonstrateInitialization()
+	demonstrateOperations()
+	demonstrateKeys()
+	demonstrateIteration()
+	demonstrateCopying()
+	demonstrateComparison()
+	demonstrateCollections()
+	demonstrateConcurrentUpdates()
 }
 
-func showCreation() {
-	var missing []string
-	empty := []string{}
-	fmt.Println(missing == nil, len(missing), cap(missing)) // true 0 0
-	fmt.Println(empty == nil, len(empty), cap(empty))       // false 0 0
+func demonstrateInitialization() {
+	var zero map[string]int
+	empty := map[string]int{}
+	planned := make(map[string]int, 64)                  // Подсказка о размере, записей пока нет.
+	fmt.Println(zero, empty, planned)                    // map[] map[] map[]
+	fmt.Println(zero == nil, empty == nil, len(planned)) // true false 0
 
-	users := make([]string, 3)
-	fmt.Printf("%q\n", users) // ["" "" ""]
-	users[0], users[1], users[2] = "Tom", "Alice", "Bob"
-	fmt.Println(users, len(users), cap(users)) // [Tom Alice Bob] 3 3
-
-	planned := make([]string, 0, 3)
-	// Ёмкость позволяет добавить элемент, но обращаться по индексу пока нельзя.
-	// planned[0] = "Tom" // Паника: длина равна нулю.
-	planned = append(planned, "Tom")
-	fmt.Println(planned, len(planned), cap(planned)) // [Tom] 1 3
+	names := map[string]int{"Tom": 1, "tom": 2, "TOM": 3, "Sam": 4}
+	fmt.Println(names) // map[Sam:4 TOM:3 Tom:1 tom:2]
 }
 
-func showSliceExpressions() {
-	initialUsers := [8]string{"Bob", "Alice", "Kate", "Sam", "Tom", "Paul", "Mike", "Robert"}
-	middle := initialUsers[2:6]   // Индекс 6 не входит в результат.
-	fmt.Println(middle)           // [Kate Sam Tom Paul]
-	fmt.Println(initialUsers[:4]) // [Bob Alice Kate Sam]
-	fmt.Println(initialUsers[3:]) // [Sam Tom Paul Mike Robert]
-	fmt.Println(middle[:2])       // [Kate Sam]
+func demonstrateOperations() {
+	var scores map[string]int
+	score, present := scores["Tom"]
+	delete(scores, "Tom") // Безопасно для nil-карты.
+	clear(scores)
+	fmt.Println(score, present, len(scores)) // 0 false 0
+	// scores["Tom"] = 1 // Паника: запись в nil-карту.
 
-	pointer := &initialUsers
-	fmt.Println(pointer[2:4]) // [Kate Sam]
+	scores = map[string]int{"Tom": 0}
+	if score, present := scores["Tom"]; present {
+		fmt.Println(score) // 0
+	}
+	score, present = scores["Kate"]
+	fmt.Println(score, present) // 0 false
 
-	numbers := [6]int{1, 2, 3, 4, 5, 6}
-	window := numbers[1:5]
-	fmt.Println(window, len(window), cap(window)) // [2 3 4 5] 4 5
-	fmt.Println(window[:5])                       // [2 3 4 5 6]
-	// fmt.Println(window[4]) // Паника: для индексации действует len, а не cap.
-	limited := numbers[1:3:3]
-	fmt.Println(limited, len(limited), cap(limited)) // [2 3] 2 2
-
-	message := "Hello World"
-	fmt.Println(message[6:]) // World
-	word := "ёж"
-	fmt.Println(len(word), word[:2]) // 4 ё
-	fmt.Printf("% x\n", word[:1])    // d1
+	scores["Tom"] = 32 // Заменяет значение существующей записи.
+	scores["Bob"] = 2  // Добавляет запись.
+	scores["Alice"]++  // Начинает с нулевого значения и записывает 1.
+	delete(scores, "Bob")
+	delete(scores, "Kate") // Для отсутствующего ключа ничего не меняется.
+	fmt.Println(scores)    // map[Alice:1 Tom:32]
+	clear(scores)
+	fmt.Println(len(scores), scores == nil) // 0 false
 }
 
-func showSharingAndRange() {
-	array := [6]int{1, 2, 3, 4, 5, 6}
-	window := array[1:5]
-	array[1] = 22
-	fmt.Println(window) // [22 3 4 5]
-	window[1] = 33
-	fmt.Println(array) // [1 22 33 4 5 6]
+func demonstrateKeys() {
+	type route struct {
+		method string
+		path   string
+	}
+	hits := map[route]int{{method: "GET", path: "/"}: 1}
+	fmt.Println(hits[route{method: "GET", path: "/"}])  // 1
+	fmt.Println(hits[route{method: "POST", path: "/"}]) // 0
+	// _ = map[[]byte]int{} // Ошибка компиляции: срезы несравнимы.
 
-	alias := window[:1]
-	fmt.Println(len(window), len(alias)) // 4 1
+	labels := map[any]string{int(1): "int", int64(1): "int64", nil: "nil"}
+	fmt.Println(labels[int(1)], labels[int64(1)], labels[nil]) // int int64 nil
+	// labels[[]int{1}] = "slice" // Паника: динамический тип []int несравним.
 
-	users := []string{"Tom", "Alice", "Kate"}
-	fmt.Println(users[2]) // Kate
-	users[2] = "Katherine"
-	for _, name := range users {
-		fmt.Println(name) // Tom, Alice, Katherine на отдельных строках
+	nan := math.NaN()
+	values := map[float64]string{nan: "первый"}
+	values[nan] = "второй" // NaN не равен самому себе, появляется ещё одна запись.
+	_, present := values[nan]
+	delete(values, nan)               // Ни один ключ не совпадает.
+	fmt.Println(len(values), present) // 2 false
+	clear(values)
+	fmt.Println(len(values)) // 0
+}
+
+func demonstrateIteration() {
+	scores := map[string]int{"Tom": 1, "Bob": 2, "Alice": 3}
+	total := 0
+	for name, score := range scores {
+		total += score // Сумма одинакова при любом порядке обхода.
+		if score < 2 {
+			delete(scores, name) // Удаляет только текущую запись Tom.
+		}
+	}
+	fmt.Println(total) // 6
+	for _, name := range slices.Sorted(maps.Keys(scores)) {
+		fmt.Println(name, scores[name]) // Сначала Alice 3, затем Bob 2.
+	}
+}
+
+func demonstrateCopying() {
+	scores := map[string]int{"Tom": 1}
+	shared := scores
+	shared["Tom"] = 2          // Обе переменные ссылаются на одну карту.
+	fmt.Println(scores["Tom"]) // 2
+	shared = map[string]int{"Tom": 9}
+	fmt.Println(scores["Tom"], shared["Tom"]) // 2 9
+
+	type player struct{ score int }
+	players := map[string]player{"Tom": {score: 1}}
+	// players["Tom"].score++ // Ошибка компиляции: элемент карты неадресуем.
+	current := players["Tom"]
+	current.score++
+	players["Tom"] = current          // Записывает изменённую структуру обратно.
+	fmt.Println(players["Tom"].score) // 2
+
+	groups := map[string][]string{"dev": {"Tom"}}
+	cloned := maps.Clone(groups)
+	cloned["dev"][0] = "Bob"                             // Изменение видно через оба среза.
+	cloned["qa"] = []string{"Alice"}                     // Новый ключ появляется только в копии.
+	fmt.Println(groups["dev"], len(groups), len(cloned)) // [Bob] 1 2
+}
+
+func demonstrateComparison() {
+	first := map[string]int{"Tom": 1}
+	second := map[string]int{"Tom": 1}
+	changed := map[string]int{"Tom": 2}
+	fmt.Println(maps.Equal(first, second), maps.Equal(first, changed)) // true false
+
+	var zero map[string]int
+	empty := map[string]int{}
+	fmt.Println(maps.Equal(zero, empty), reflect.DeepEqual(zero, empty)) // true false
+
+	reviewed := map[string][]int{"Tom": {1, 2}}
+	submitted := map[string][]int{"Tom": {1, 2}}
+	fmt.Println(maps.EqualFunc(reviewed, submitted, slices.Equal[[]int, int])) // true
+	fmt.Println(reflect.DeepEqual(reviewed, submitted))                        // true
+
+	withNaN := map[float64]int{math.NaN(): 1}
+	// maps.Equal ищет ключ через индекс, DeepEqual распознаёт общую таблицу.
+	fmt.Println(maps.Equal(withNaN, withNaN), reflect.DeepEqual(withNaN, withNaN)) // false true
+}
+
+func demonstrateCollections() {
+	seen := map[string]struct{}{"Tom": {}}
+	_, present := seen["Tom"]
+	fmt.Println(present) // true
+
+	groups := make(map[string][]string)
+	groups["dev"] = append(groups["dev"], "Tom") // append принимает nil-срез.
+	fmt.Println(groups["dev"])                   // [Tom]
+
+	scores := make(map[string]map[string]int)
+	if scores["Go"] == nil {
+		scores["Go"] = make(map[string]int) // Внутренняя карта нужна до записи.
+	}
+	scores["Go"]["Tom"]++
+	fmt.Println(scores["Go"]["Tom"]) // 1
+}
+
+func demonstrateConcurrentUpdates() {
+	counts := make(map[string]int)
+	var mutex sync.Mutex
+	var workers sync.WaitGroup
+
+	for range 2 {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			mutex.Lock()
+			counts["Go"]++ // Один замок защищает чтение и запись при инкременте.
+			mutex.Unlock()
+		}()
 	}
 
-	scores := []int{1, 2, 3}
-	for index, score := range scores {
-		scores[index] = score * 10 // Получаем копию score, а пишем в элемент массива.
-	}
-	fmt.Println(scores) // [10 20 30]
-}
-
-func showRows() {
-	rows := [][]int{{1, 2}, {3, 4}, {5, 6, 7}}
-	rows[1][0] = 30
-	fmt.Println(rows) // [[1 2] [30 4] [5 6 7]]
-
-	grid := make([][]int, 2)
-	fmt.Println(grid[0] == nil) // true
-	grid[0] = make([]int, 3)
-	fmt.Println(grid) // [[0 0 0] []]
-}
-
-func showAppend() {
-	users := []string{"Tom", "Alice", "Kate"}
-	users = append(users, "Bob")
-	fmt.Println(users) // [Tom Alice Kate Bob]
-
-	var missing []int
-	missing = append(missing, 1, 2)
-	fmt.Println(missing) // [1 2]
-
-	array := [4]int{10, 20, 30, 40}
-	prefix := array[:2]
-	extended := append(prefix, 99)       // Свободная ёмкость позволяет перезаписать array[2].
-	fmt.Println(prefix, extended, array) // [10 20] [10 20 99] [10 20 99 40]
-
-	detached := append(array[:2:2], 77) // При len == cap выделяется новый массив.
-	detached[0] = 100
-	fmt.Println(detached, array) // [100 20 77] [10 20 99 40]
-}
-
-func showDelete() {
-	users := []string{"Bob", "Alice", "Kate", "Sam", "Tom", "Paul", "Mike", "Robert"}
-	original := users
-	index := 3
-	users = append(users[:index], users[index+1:]...)
-	fmt.Println(users)    // [Bob Alice Kate Tom Paul Mike Robert]
-	fmt.Println(original) // [Bob Alice Kate Tom Paul Mike Robert Robert]
-	clear(original[len(users):])
-	fmt.Printf("%q\n", original[len(users)]) // ""
-
-	values := []int{10, 20, 30, 40}
-	shortened := slices.Delete(values, 1, 3)
-	// Начиная с Go 1.22 хвост массива обнуляется.
-	fmt.Println(shortened, values) // [10 40] [10 40 0 0]
-}
-
-func showCopy() {
-	source := []int{1, 2, 3, 4, 5, 6}
-	empty := make([]int, 0, 6)
-	short := make([]int, 3)
-	long := make([]int, 8)
-	fmt.Println(copy(empty, source), empty) // 0 []
-	fmt.Println(copy(short, source), short) // 3 [1 2 3]
-	fmt.Println(copy(long, source), long)   // 6 [1 2 3 4 5 6 0 0]
-
-	overlapping := []int{1, 2, 3, 4}
-	copied := copy(overlapping[1:], overlapping[:3])
-	fmt.Println(copied, overlapping) // 3 [1 1 2 3]
-
-	cloned := slices.Clone(source)
-	cloned[0] = 99
-	fmt.Println(source[0], cloned[0]) // 1 99
-
-	rows := [][]int{{1, 2}}
-	clonedRows := slices.Clone(rows)
-	clonedRows[0][0] = 10         // Описания строк скопированы, но массивы строк общие.
-	fmt.Println(rows, clonedRows) // [[10 2]] [[10 2]]
-}
-
-func showSortAndSearch() {
-	users := []string{"Tom", "Bob", "Sam"}
-	fmt.Println(slices.Index(users, "Sam")) // 2
-	sort.Strings(users)
-	fmt.Println(users)                                                                // [Bob Sam Tom]
-	fmt.Println(sort.SearchStrings(users, "Sam"), sort.SearchStrings(users, "Alice")) // 1 0
-
-	values := []int{11, 22, 33, 44, 55, 66}
-	fmt.Println(sort.SearchInts(values, 33), sort.SearchInts(values, 45)) // 2 4
-	fmt.Println(slices.BinarySearch(values, 45))                          // 4 false
-
-	numbers := []int{3, 1, 2}
-	slices.Reverse(numbers)
-	fmt.Println(numbers) // [2 1 3]
-	sort.Sort(sort.Reverse(sort.IntSlice(numbers)))
-	fmt.Println(numbers) // [3 2 1]
-}
-
-func showComparison() {
-	first := []int{1, 2, 3, 4}
-	same := []int{1, 2, 3, 4}
-	short := []int{1, 2, 3}
-	// _ = first == same // Ошибка компиляции: два среза нельзя сравнить через ==.
-	fmt.Println(slices.Equal(first, same), slices.Equal(first, short)) // true false
-
-	var missing []int
-	fmt.Println(slices.Equal(missing, []int{}))                   // true
-	fmt.Println(reflect.DeepEqual(missing, []int{}))              // false
-	fmt.Println(reflect.DeepEqual(first, []string{"Tom", "Bob"})) // false
+	workers.Wait()            // После завершения горутин писателей больше нет.
+	fmt.Println(counts["Go"]) // 2
 }
