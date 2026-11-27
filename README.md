@@ -1,51 +1,34 @@
-# Урок 024. Разделение проекта на пакеты
+# Урок 025. Загрузка внешних зависимостей
 
-Проект на Go можно разделить на пакеты по назначению. В этом уроке пакет `checkout` формирует строку с итоговой
-стоимостью покупки, а пакеты `card` и `cash` содержат названия способов оплаты. Все пакеты входят в один модуль.
+Внешний пакет можно импортировать в свой код так же, как пакет стандартной библиотеки. Команда `go` берёт
+внешний пакет из версии модуля, выбранной для проекта. В этом уроке подключим демонстрационный пакет
+`rsc.io/quote`, вызовем две функции и посмотрим, как меняются `go.mod` и `go.sum`.
 
-## Модуль и пути импорта
+## Добавление зависимости
 
-Начиная с Go 1.16, команда `go` по умолчанию работает в режиме модулей. Для нового проекта команда
-`go mod init github.com/Hardome/learn-golang` создаёт `go.mod` в текущем каталоге. В репозитории урока
-[go.mod](go.mod) уже есть. Его директива `module` задаёт путь `github.com/Hardome/learn-golang`.
+В новом каталоге сначала выполните `go mod init example.org/quotes`. Команда создаст в нём `go.mod`.
+У этого урока уже есть [go.mod](go.mod), поэтому готовый пример можно сразу запустить из корня репозитория.
 
-Для пакета в подкаталоге путь импорта состоит из пути модуля и пути от корня модуля до каталога пакета.
-Например, каталог `checkout/` даёт путь импорта `github.com/Hardome/learn-golang/checkout`.
+Чтобы добавить зависимость в новый модуль, выполните:
 
-## Один пакет в нескольких файлах
-
-Go собирает файлы одного пакета из одного каталога. В файлах `checkout/receipt.go` и `checkout/total.go`
-указано одно имя пакета `checkout`. Функция `Receipt` вызывает `total` напрямую, потому что обе объявлены
-в одном пакете.
-
-`checkout/receipt.go`
-
-```go
-package checkout
-
-import "fmt"
-
-func Receipt(unitPrice, quantity int) string {
-	return fmt.Sprintf("Итого: %d ₽", total(unitPrice, quantity)) // total объявлена в другом файле пакета.
-}
+```text
+go get rsc.io/quote@v1.5.2
 ```
 
-`checkout/total.go`
+`rsc.io/quote` здесь одновременно путь импорта пакета и путь модуля, потому что пакет находится в корне
+модуля. Суффикс `@v1.5.2` запрашивает конкретную версию. В режиме модулей начиная с Go 1.18 команда
+`go get` управляет зависимостями проекта. Она обновляет требования в `go.mod` и при необходимости
+скачивает модули. После первого скачивания в примере появляется и `go.sum`.
 
-```go
-package checkout
+Пока исходники проекта ещё не импортируют `rsc.io/quote`, команда добавляет запись с пометкой `// indirect`:
 
-func total(unitPrice, quantity int) int {
-	return unitPrice * quantity // Цена одной единицы умножается на количество.
-}
+```text
+rsc.io/quote v1.5.2 // indirect
 ```
 
-### Доступ из другого пакета
+## Импорт пакета и запуск
 
-Функция, объявленная на уровне пакета, экспортируется, если её имя начинается с заглавной буквы Unicode.
-Поэтому из пакета `main` можно вызвать `checkout.Receipt`, а функция `total` доступна только внутри
-`checkout`. В импорте указывают полный путь к пакету. В вызове без псевдонима используют имя из его
-объявления `package checkout`.
+Создайте `hello.go` в корне нового модуля. Готовый пример лежит в [hello.go](hello.go).
 
 ```go
 package main
@@ -53,99 +36,81 @@ package main
 import (
 	"fmt"
 
-	"github.com/Hardome/learn-golang/checkout"
+	"rsc.io/quote" // Пакет из внешнего модуля.
 )
 
 func main() {
-	fmt.Println(checkout.Receipt(250, 3)) // Итого: 750 ₽
-	// checkout.total(250, 3) // Ошибка компиляции: total доступна только внутри checkout.
+	// Обе функции возвращают фиксированные строки.
+	fmt.Println(quote.Go())  // Don't communicate by sharing memory, share memory by communicating.
+	fmt.Println(quote.Opt()) // If a program is too slow, it must have a loop.
 }
 ```
 
-## Пакеты во вложенных каталогах
+В `import` указывают путь пакета. Версия хранится в требованиях модуля. Из его корня выполните
+`go mod tidy`, затем `go run .`. Программа напечатает две строки, указанные в комментариях.
 
-Каталоги `checkout/card/` и `checkout/cash/` содержат отдельные пакеты со своими именами и путями импорта.
-Вложенность каталогов группирует код. Каждый пакет импортируется отдельно. Правила экспорта действуют
-и между `checkout` и пакетами в его подкаталогах.
+### Прямые и косвенные зависимости
 
-`checkout/card/label.go`
+После добавления импорта `go mod tidy` убирает у `rsc.io/quote` пометку `// indirect`, потому что теперь
+его пакет импортируется в `hello.go`. Пакет `quote` использует `rsc.io/sampler`, а тот использует
+`golang.org/x/text`. Для нашего модуля это косвенные зависимости. В `go.mod` урока получились такие требования:
 
-```go
-package card
+```text
+require rsc.io/quote v1.5.2
 
-func Label() string {
-	return "Карта" // Название оплаты картой.
-}
-```
-
-`checkout/cash/label.go`
-
-```go
-package cash
-
-func Label() string {
-	return "Наличные" // Название оплаты наличными.
-}
-```
-
-Файлы можно назвать одинаково, потому что они лежат в разных каталогах. Функции `Label` тоже могут иметь
-одинаковые имена. Вызовы различаются по имени пакета.
-
-```go
-package main
-
-import (
-	"fmt"
-
-	"github.com/Hardome/learn-golang/checkout/card"
-	"github.com/Hardome/learn-golang/checkout/cash"
+require (
+	golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c // indirect
+	rsc.io/sampler v1.3.0 // indirect
 )
-
-func main() {
-	fmt.Println(card.Label()) // Карта
-	fmt.Println(cash.Label()) // Наличные
-}
 ```
 
-## Структура проекта и запуск
+## Контрольные суммы и кеш модулей
 
-[hello.go](hello.go) использует все три пакета. Учебные файлы расположены так.
+В [go.sum](go.sum) Go хранит контрольные суммы, чтобы при загрузке проверить целостность модулей. Для
+`rsc.io/quote` в нём есть две строки:
 
 ```text
-.                 # пакет main
-├── go.mod
-├── hello.go
-└── checkout/     # пакет checkout
-    ├── receipt.go
-    ├── total.go
-    ├── card/     # пакет card
-    │   └── label.go
-    └── cash/     # пакет cash
-        └── label.go
+rsc.io/quote v1.5.2 h1:w5fcysjrx7yqtD/aO+QwRjYZOKnaM9Uh2b40tElTs3Y=
+rsc.io/quote v1.5.2/go.mod h1:LzX7hefJvL54yjefDEDHNONDjII0t9xZLPXsUe+TKr0=
 ```
 
-Из корня проекта выполните `go run .`. Точка выбирает пакет `main` из текущего каталога. Команда `go`
-сама загружает импортируемые пакеты из их каталогов. В этом примере `go run hello.go` даёт тот же результат.
+Первая сумма относится к содержимому архива модуля, вторая проверяет только его `go.mod`.
+Сохраняйте `go.mod` и `go.sum` в Git вместе с кодом проекта.
+
+Загруженные модули лежат в общем для проектов кеше `GOMODCACHE`. По умолчанию это каталог `pkg/mod`
+в первом каталоге `GOPATH`. Фактические пути можно посмотреть командами:
 
 ```text
-Итого: 750 ₽
-Карта
-Наличные
+go env GOPATH
+go env GOMODCACHE
 ```
 
-Подробнее о `go.mod` и зависимостях в [уроке 023 о модулях][modules-lesson].
+## Что меняет go mod tidy
+
+`go mod tidy` приводит `go.mod` и `go.sum` в соответствие с импортами проекта и их зависимостями,
+включая импорты из тестов.
+
+- Если в новом модуле сначала написать импорт `rsc.io/quote` и выполнить `go mod tidy`, Go сам найдёт
+  модуль для этого пакета и добавит требование. `go get rsc.io/quote@v1.5.2` позволяет явно указать версию.
+- Если в пробном проекте убрать импорт `rsc.io/quote` и заменить оба вызова одной строкой
+  `fmt.Println("Готово")`, после `go mod tidy` блоки `require` исчезнут, а `go.sum` опустеет или будет
+  удалён. Все три модуля больше не нужны этому проекту. Их файлы сохранятся в кеше.
+
+О пути модуля и структуре `go.mod` подробнее в [уроке 023 о модулях][modules-lesson].
 
 ## Источники
 
-- [Go 1.16 Release Notes · Modules](https://go.dev/doc/go1.16#modules)
 - [Go Modules Reference · go mod init](https://go.dev/ref/mod#go-mod-init)
-- [Organizing a Go module · Multiple packages](https://go.dev/doc/modules/layout#multiple-packages)
-- [Go Specification · Package clause](https://go.dev/ref/spec#Package_clause)
-- [Go Specification · Declarations and scope](https://go.dev/ref/spec#Declarations_and_scope)
-- [Go Specification · Exported identifiers](https://go.dev/ref/spec#Exported_identifiers)
-- [Go Specification · Import declarations](https://go.dev/ref/spec#Import_declarations)
-- [Package names · Package paths](https://go.dev/blog/package-names#package-paths)
+- [Go Modules Reference · go get](https://go.dev/ref/mod#go-get)
+- [Go 1.18 Release Notes · go get](https://go.dev/doc/go1.18#go-get)
+- [Go Modules Reference · require](https://go.dev/ref/mod#go-mod-file-require)
+- [Go Modules Reference · go mod tidy](https://go.dev/ref/mod#go-mod-tidy)
+- [Go Modules Reference · go.sum files](https://go.dev/ref/mod#go-sum-files)
+- [Go Modules Reference · Module cache](https://go.dev/ref/mod#module-cache)
+- [cmd/go · go env](https://pkg.go.dev/cmd/go#hdr-Print_Go_environment_information)
 - [cmd/go · go run](https://pkg.go.dev/cmd/go#hdr-Compile_and_run_Go_program)
-- [fmt.Sprintf](https://pkg.go.dev/fmt#Sprintf) · [fmt.Println](https://pkg.go.dev/fmt#Println)
+- [quote.Go](https://pkg.go.dev/rsc.io/quote@v1.5.2#Go) · [quote.Opt](https://pkg.go.dev/rsc.io/quote@v1.5.2#Opt)
+- [rsc.io/quote · go.mod](https://github.com/rsc/quote/blob/v1.5.2/go.mod)
+- [rsc.io/sampler · go.mod](https://github.com/rsc/sampler/blob/v1.3.0/go.mod)
 
 [modules-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-023-modules
