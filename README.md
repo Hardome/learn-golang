@@ -163,7 +163,6 @@ fmt.Println(readers[0](), readers[1](), readers[2]()) // 3 3 3
 В инструкциях `defer` и `go` функциональное значение и аргументы вычисляются сразу в вызывающей горутине.
 Тело отложенной функции выполняется при выходе из окружающей функции, в обратном порядке регистрации,
 в том числе при раскрутке стека из-за паники.
-Чтобы остановить панику, вызови `recover()` непосредственно в теле отложенной функции в той же горутине.
 Тело функции, запущенной через `go`, выполняется в новой горутине.
 
 ```go
@@ -235,7 +234,6 @@ fmt.Println(factorial(5)) // 120
 - [Go 1.22 Release Notes — Changes to the language](https://go.dev/doc/go1.22#language)
 - [The Go Blog — Fixing For Loops in Go 1.22](https://go.dev/blog/loopvar-preview#the-fix)
 - [Go Language Specification — Defer statements](https://go.dev/ref/spec#Defer_statements)
-- [Go Language Specification — Handling panics](https://go.dev/ref/spec#Handling_panics)
 - [Go Language Specification — Go statements](https://go.dev/ref/spec#Go_statements)
 - [Effective Go — Defer](https://go.dev/doc/effective_go#defer)
 - [Go Memory Model — Introduction](https://go.dev/ref/mem#introduction)
