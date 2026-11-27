@@ -11,14 +11,12 @@ import (
 	texttemplate "text/template" // Даём второму пакету template своё имя.
 )
 
-var message = "Привет"
-
-func init() {
-	message += ", Go!" // Меняем переменную после того, как она получила начальное значение.
+func sayHello(name string) {
+	fmt.Printf("Привет, %s!\n", name) // Подставляет имя в приветствие.
 }
 
 func main() {
-	fmt.Println(message)        // Привет, Go!
+	sayHello("Go")              // Привет, Go!
 	fmt.Println(math.Pow(2, 3)) // 8
 
 	// Оба пакета называются template. Вызовы различаются по имени перед точкой.
