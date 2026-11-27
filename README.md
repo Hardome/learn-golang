@@ -30,9 +30,9 @@ require rsc.io/quote v1.5.2
 ### go.sum
 
 `go.sum` хранит контрольные суммы скачанных модулей. Строка с `/go.mod` проверяет файл `go.mod` зависимости,
-а строка без этого суффикса — файлы модуля. При несовпадении суммы Go выдаст ошибку. В проекте только со
-стандартной библиотекой `go.sum` может отсутствовать. Если файл появился, его сохраняют в Git вместе
-с `go.mod`, чтобы проверять те же версии по тем же суммам.
+а строка без этого суффикса — файлы модуля. При несовпадении суммы Go выдаст ошибку. Выбор версий при
+этом определяется требованиями модулей. В проекте только со стандартной библиотекой `go.sum` может отсутствовать.
+Если файл появился, его сохраняют в Git вместе с `go.mod`.
 
 ## Создание и запуск модуля
 
@@ -125,7 +125,7 @@ replace example.org/lib => ../lib
   [go build](https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies).
 - [Директивы go.mod](https://go.dev/ref/mod#go-mod-file) · [файл go.sum](https://go.dev/ref/mod#go-sum-files) ·
   [выбор версий MVS](https://go.dev/ref/mod#minimal-version-selection).
-- [Минимальная версия Go](https://go.dev/doc/toolchain#module-and-workspace-configuration) ·
+- [Минимальная версия Go](https://go.dev/ref/mod#go-mod-file-go) ·
   [команды сборки с Go 1.16](https://go.dev/doc/go1.16#go-command).
 - [go get](https://go.dev/ref/mod#go-get) · [go mod tidy](https://go.dev/ref/mod#go-mod-tidy) ·
   [запросы версий](https://go.dev/ref/mod#version-queries) · [replace](https://go.dev/ref/mod#go-mod-file-replace).
