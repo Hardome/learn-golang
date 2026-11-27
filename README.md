@@ -103,20 +103,8 @@ fmt.Println(array)                               // [1 22 3 4 5 6]
 Выражение `s[:len(s):len(s)]` оставляет все текущие элементы и ограничивает ёмкость длиной.
 Если после этого добавить хотя бы один элемент, `append` выделит новый массив.
 
-### Подстрока и байтовые индексы
-
-```go
-message := "Hello World"
-fmt.Println(message[6:]) // World. Результат имеет тип string.
-
-word := "ёж"
-fmt.Println(len(word), word[:2]) // 4 ё. Один символ здесь закодирован двумя байтами.
-fmt.Printf("% x\n", word[:1])    // d1. По произвольной границе можно разрезать кодировку UTF-8.
-```
-
-У строки индексы выражения среза — смещения в байтах. Правая граница ограничена `len(str)`.
-Трёхиндексная форма для строки недоступна. Для индексации по кодовым точкам можно работать
-со срезом `[]rune`. Одна кодовая точка не всегда соответствует целому видимому символу.
+Для строки `text[i:j]` индексы считаются в байтах. Подстрока ограничена длиной строки и не поддерживает
+третий индекс.
 
 ## Общий массив, присваивание и перебор
 
@@ -313,60 +301,22 @@ fmt.Println(rows, clonedRows) // [[10 2]] [[10 2]]
 его элементы и отпустите ссылки на прежний массив. Укорочение или ограничение ёмкости
 само по себе не отсоединяет срез от массива.
 
-## Сортировка, поиск и обратный порядок
+## Сортировка и поиск
 
-### Сортировка меняет исходный массив
+`slices.Sort` меняет порядок элементов в исходном массиве. Если его нужно сохранить, сортируйте копию.
+`slices.Index` ищет линейно, а `slices.BinarySearch` требует уже отсортированный срез.
 
 ```go
-users := []string{"Tom", "Bob", "Sam"}
-sort.Strings(users) // Сортировка на месте, по возрастанию.
-fmt.Println(users)  // [Bob Sam Tom]
-
 scores := []int{33, 11, 22}
-slices.Sort(scores) // Та же операция для упорядоченных типов.
-fmt.Println(scores) // [11 22 33]
+fmt.Println(slices.Index(scores, 22)) // 2, поиск в исходном порядке.
+
+slices.Sort(scores)
+fmt.Println(scores)                        // [11 22 33]
+fmt.Println(slices.BinarySearch(scores, 20)) // 1 false, место для вставки без совпадения.
 ```
 
-В пакете `sort` есть также `Ints` и `Float64s`. Для порядка по своему правилу используйте
-`slices.SortFunc`. Если элементы с одинаковым ключом должны сохранить взаимный порядок,
-используйте `slices.SortStableFunc`. Чтобы сохранить исходный порядок целиком, сортируйте копию.
-
-### Линейный и двоичный поиск
-
-```go
-users := []string{"Tom", "Bob", "Sam"}
-fmt.Println(slices.Index(users, "Sam")) // 2. Линейный поиск, сортировка не нужна.
-fmt.Println(slices.Index(users, "Alice")) // -1
-
-sort.Strings(users)
-fmt.Println(sort.SearchStrings(users, "Sam")) // 1. Теперь порядок [Bob Sam Tom].
-fmt.Println(sort.SearchStrings(users, "Alice")) // 0. Это позиция вставки, а не совпадение.
-
-numbers := []int{11, 22, 33, 44, 55, 66}
-fmt.Println(sort.SearchInts(numbers, 33), sort.SearchInts(numbers, 45)) // 2 4
-fmt.Println(slices.BinarySearch(numbers, 45)) // 4 false
-fmt.Println(slices.BinarySearch(numbers, 99)) // 6 false. Позиция вставки может быть len(s).
-```
-
-Двоичный поиск работает за `O(log n)` по уже отсортированному срезу. `sort.SearchStrings`,
-`sort.SearchInts` и `sort.SearchFloat64s` самостоятельно срез не сортируют. Для строки
-наличие проверяется как `i < len(users) && users[i] == target`. У `slices.BinarySearch`
-признак наличия возвращается отдельно. При повторах возвращается первое совпадение.
-Для разового поиска в несортированных данных линейный обход обычно проще.
-
-### Разворот среза и сортировка по убыванию
-
-```go
-numbers := []int{3, 1, 2}
-slices.Reverse(numbers)                      // Меняем местами элементы с двух концов.
-fmt.Println(numbers)                        // [2 1 3]
-
-sort.Sort(sort.Reverse(sort.IntSlice(numbers))) // Reverse переворачивает правило сравнения.
-fmt.Println(numbers)                           // [3 2 1]. Перестановку выполняет sort.Sort.
-```
-
-`slices.Reverse` обращает текущий порядок элементов. `sort.Reverse` возвращает обёртку
-над `sort.Interface`. Аналогично можно передать `sort.StringSlice` или `sort.Float64Slice`.
+`slices.Reverse` разворачивает элементы в текущем порядке. Чтобы получить порядок по убыванию таким способом,
+сначала отсортируйте срез.
 
 ## Сравнение срезов
 
@@ -407,7 +357,7 @@ fmt.Println(reflect.DeepEqual(first, []string{"Tom", "Bob"}))        // false
 - [Блог Go — устройство срезов и удержание массива](https://go.dev/blog/slices-intro)
 - [Блог Go — обнуление хвоста и общая память](https://go.dev/blog/generic-slice-functions)
 - [Заметки Go 1.21 — стандартный пакет slices](https://go.dev/doc/go1.21#slices)
-- [Заметки Go 1.22 — обнуление хвоста](https://go.dev/doc/go1.22#slices)
+- [Go 1.22 — изменения стандартной библиотеки](https://go.dev/doc/go1.22#minor_library_changes)
 - [Стандартная библиотека — slices.Delete](https://pkg.go.dev/slices#Delete)
 - [Стандартная библиотека — slices.Clone](https://pkg.go.dev/slices#Clone)
 - [Стандартная библиотека — slices.Sort](https://pkg.go.dev/slices#Sort)
