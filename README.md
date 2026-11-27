@@ -112,15 +112,15 @@ func main() {
 [hello.go](hello.go) использует все три пакета. Учебные файлы расположены так.
 
 ```text
-.
+.                 # пакет main
 ├── go.mod
 ├── hello.go
-└── checkout/
+└── checkout/     # пакет checkout
     ├── receipt.go
     ├── total.go
-    ├── card/
+    ├── card/     # пакет card
     │   └── label.go
-    └── cash/
+    └── cash/     # пакет cash
         └── label.go
 ```
 
