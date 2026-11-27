@@ -35,7 +35,7 @@ func main() {
 
 	// При целочисленном делении дробная часть отбрасывается.
 	// Преобразуем count в float64 до деления, чтобы получить 63.5.
-	fmt.Printf("count / 2 = %v, float64(count) / 2 = %v\n", count/2, float64(count)/2)
+	fmt.Printf("count / 2 = %v, float64(count) / 2 = %v\n", count/2, float64(count)/2) // count / 2 = 63, float64(count) / 2 = 63.5
 	// count / 2 = 63, float64(count) / 2 = 63.5
 
 	// Переменные без начального значения получают нулевое значение своего типа.
