@@ -23,17 +23,24 @@ if a > b {
 } else {
     relation = "a <= b и a <= c"
 }
+fmt.Println(relation) // a <= b и a <= c
 ```
 
 Обе строгие проверки дают `false`, поэтому `relation` получает значение из `else`. Здесь `a` и `c` равны.
 
 ### Короткая инструкция в `if`
 
-В записи `if remainder := 17 % 3; remainder == 0 {` Go сначала вычисляет остаток, затем проверяет условие.
+Перед условием в `if` можно выполнить простую инструкцию. Здесь она объявляет `remainder`, доступную
+в условии и в обеих ветках. Остаток равен `2`, поэтому срабатывает `else`.
 
-Переменная `remainder` доступна в условии и во всех ветках. Её область видимости заканчивается вместе с `if`.
-
-В примере остаток равен `2`, поэтому выполняется ветка `else`.
+```go
+if remainder := 17 % 3; remainder == 0 {
+    fmt.Println("делится на 3")
+} else {
+    fmt.Printf("остаток %d\n", remainder) // остаток 2
+}
+// fmt.Println(remainder) // Ошибка компиляции. Область видимости закончилась вместе с if.
+```
 
 ## `switch`
 
@@ -61,6 +68,7 @@ case temperature >= 25:
 default:
     weather = "умеренно"
 }
+fmt.Println(weather) // умеренно
 ```
 
 ### Порядок проверок и `default`
@@ -82,19 +90,23 @@ Go проверяет варианты по порядку до первого �
 Инструкция `fallthrough` передаёт управление телу следующей ветки без проверки её условия.
 
 ```go
-value := 5
-var visited []int
-
-switch value {
-case 5:
-    visited = append(visited, 5)
-    fallthrough
-case 6:
-    visited = append(visited, 6)
+for _, value := range [3]int{4, 5, 7} {
+    switch value {
+    case 3, 4:
+        fmt.Println(value, "case 3 или 4") // 4 case 3 или 4
+    case 5:
+        fmt.Println(value, "case 5")      // 5 case 5
+        fallthrough
+    case 6:
+        fmt.Println(value, "case 6")      // 5 case 6
+    default:
+        fmt.Println(value, "default")     // 7 default
+    }
 }
 ```
 
-В `visited` добавляются оба числа. Вторая ветка выполняется, хотя `value` равно `5`.
+Для `4` подходит первый `case`. Для `5` срабатывает `case 5`, затем переход сразу в тело `case 6`.
+У `7` совпадений нет, поэтому выполняется `default`.
 
 `fallthrough` допустим как последняя непустая инструкция ветки обычного `switch`, если за ней есть следующая ветка.
 
@@ -104,18 +116,29 @@ case 6:
 значения.
 
 ```go
-func asInt(value any) (int, bool) {
+func describeType(value any) string {
     switch typed := value.(type) {
     case int:
-        return typed, true
+        return fmt.Sprintf("int, следующее число %d", typed+1)
+    case string, bool:
+        _, isString := typed.(string)
+        return fmt.Sprintf("строка: %t", isString)
+    case nil:
+        return "nil"
     default:
-        return 0, false
+        return "другой тип"
     }
 }
+
+// Внутри функции.
+fmt.Println(describeType(42))   // int, следующее число 43
+fmt.Println(describeType("Go")) // строка: true
+fmt.Println(describeType(nil))  // nil
 ```
 
-- **Один тип в `case`.** Переменная `typed` получает указанный тип. В `case int` она имеет тип `int`.
-- **Несколько типов в `case` или ветка `default`.** Переменная сохраняет тип интерфейсного выражения.
+- **Один тип в `case`.** В `case int` переменная `typed` имеет тип `int`, поэтому можно вычислить `typed+1`.
+- **Несколько типов в `case` или ветка `default`.** У `typed` сохраняется тип интерфейсного выражения,
+  в примере это `any`. Выражение `typed.(string)` проверяет, содержит ли интерфейс строку.
 - **`case nil`.** Ветка срабатывает для интерфейса без динамического типа.
 
 В `switch` по типу `fallthrough` запрещён.

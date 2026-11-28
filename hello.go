@@ -17,28 +17,25 @@ func main() {
 	}
 	fmt.Println("Сравнение:", relation) // Сравнение: a <= b и a <= c
 
-	// remainder доступна в условии и внутри обеих веток.
-	var divisionResult string
-
 	if remainder := 17 % 3; remainder == 0 {
-		divisionResult = "делится на 3"
+		fmt.Println("делится на 3")
 	} else {
-		divisionResult = fmt.Sprintf("остаток %d", remainder)
+		fmt.Printf("остаток %d\n", remainder) // остаток 2
 	}
-	fmt.Println("17 / 3:", divisionResult) // 17 / 3: остаток 2
+	// fmt.Println(remainder) // Ошибка компиляции. Область видимости закончилась вместе с if.
 
 	// Три значения показывают обычное совпадение, fallthrough и default.
-	for _, value := range [3]int{4, c, 7} {
+	for _, value := range [3]int{4, 5, 7} {
 		switch value {
 		case 3, 4:
-			fmt.Printf("switch(%d), case 3 или 4\n", value) // switch(4), case 3 или 4
+			fmt.Println(value, "case 3 или 4") // 4 case 3 или 4
 		case 5:
-			fmt.Printf("switch(%d), case 5\n", value) // switch(5), case 5
-			fallthrough                               // Выполняет следующий блок, даже если value != 6.
+			fmt.Println(value, "case 5") // 5 case 5
+			fallthrough                  // Выполняет следующий блок, даже если value != 6.
 		case 6:
-			fmt.Printf("switch(%d), case 6\n", value) // switch(5), case 6
+			fmt.Println(value, "case 6") // 5 case 6
 		default:
-			fmt.Printf("switch(%d), default\n", value) // switch(7), default
+			fmt.Println(value, "default") // 7 default
 		}
 	}
 
@@ -57,16 +54,21 @@ func main() {
 	}
 	fmt.Println("На улице:", weather) // На улице: умеренно
 
-	// Type switch проверяет динамический тип интерфейса.
-	var value any = 42
-	var kind string
+	fmt.Println(describeType(42))   // int, следующее число 43
+	fmt.Println(describeType("Go")) // строка: true
+	fmt.Println(describeType(nil))  // nil
+}
+
+func describeType(value any) string {
 	switch typed := value.(type) {
 	case int:
-		kind = fmt.Sprintf("int %d", typed) // Здесь typed имеет тип int.
+		return fmt.Sprintf("int, следующее число %d", typed+1)
+	case string, bool:
+		_, isString := typed.(string)
+		return fmt.Sprintf("строка: %t", isString)
 	case nil:
-		kind = "nil"
+		return "nil"
 	default:
-		kind = "другой тип"
+		return "другой тип"
 	}
-	fmt.Println("Динамический тип:", kind) // Динамический тип: int 42
 }
