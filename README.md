@@ -145,7 +145,7 @@ copied.age++
 fmt.Println(tom.age, copied.age) // 23 24
 ```
 
-Подробнее о том, где хранится переменная и как работают указатели, см. в уроке 016.
+Как работают указатели и от чего зависит размещение переменной, описано в [уроке 016][pointers].
 
 ## Копирование и параметры функций
 
@@ -163,14 +163,23 @@ fmt.Println(tom.age, tomas.age) // 41 18
 ### Изменение данных, на которые ссылается поле
 
 ```go
-original := struct{ tags []string }{tags: []string{"go"}}
-copied := original    // Скопировано описание среза. Массив у срезов общий.
+type profile struct {
+    owner person
+    tags  []string
+}
+original := profile{owner: person{name: "Tom", age: 41}, tags: []string{"go"}}
+copied := original
+copied.owner.age = 18
 copied.tags[0] = "struct"
-fmt.Println(original.tags[0], copied.tags[0]) // struct struct
+fmt.Println(original.owner.age, copied.owner.age, original.tags[0]) // 41 18 struct
 
 copied.tags = []string{"copy"} // В поле copied записываем уже другой срез.
 fmt.Println(original.tags[0], copied.tags[0]) // struct copy
 ```
+
+У `copied.owner` собственные поля, поэтому запись возраста касается только копии. Значение поля `tags`
+тоже копируется, но оба среза продолжают обращаться к одному массиву. Запись элемента видна через
+оба среза, а присваивание нового среза меняет только поле `copied.tags`.
 
 При копировании поля-указателя оба поля указывают на одну переменную. Скопированное поле-карта
 обращается к той же карте. Если нужны независимые данные, отдельно копируйте данные
@@ -338,6 +347,15 @@ fmt.Println(tom.name, tom.person.name) // Team Tom Tom
 ### Продвинутый селектор как ключ литерала
 
 ```go
+type person struct {
+    name string
+    age  int
+}
+type member struct {
+    login string
+    person
+}
+
 alice := member{person: person{name: "Alice"}} // Явно задаём встроенное поле целиком.
 fmt.Println(alice.name) // Alice
 
@@ -347,8 +365,9 @@ fmt.Println(bob.person.name) // Bob
 // _ = member{person: person{}, name: "Bob"} // Ошибка: person уже задан целиком.
 ```
 
-До Go 1.27 ключом литерала могло быть только непосредственно объявленное поле. С Go 1.27
-продвинутый селектор допустим, если путь к нему не проходит через встроенный указатель.
+С Go 1.27 в качестве ключа можно указать селектор встроенного поля. Он должен однозначно выбирать
+поле, а путь к нему в литерале не может проходить через встроенный указатель. В предыдущих версиях
+используйте форму с ключом `person`, как у `alice`.
 
 ### Встроенный указатель и нулевое значение
 
@@ -407,11 +426,11 @@ fmt.Println(string(encoded), err) // {"name":"Tom"} <nil>
 
 ### Размер и выравнивание
 
-`unsafe.Sizeof` учитывает промежутки между полями для выравнивания. Размер зависит от архитектуры и реализации.
-Размер `struct{}{}` равен нулю.
+`unsafe.Sizeof` учитывает промежутки между полями для выравнивания и возвращает число байтов.
+Размер и выравнивание конкретной структуры зависят от архитектуры и реализации. Размер `struct{}{}` равен нулю.
 
-См. также [урок 016 об указателях](https://github.com/Hardome/learn-golang/tree/lesson-016-pointers)
-и [урок 017 об определениях типов](https://github.com/Hardome/learn-golang/tree/lesson-017-type-aliases).
+[pointers]: https://github.com/Hardome/learn-golang/tree/lesson-016-pointers
+[methods-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-019-methods
 
 ## Источники
 
@@ -437,5 +456,3 @@ fmt.Println(string(encoded), err) // {"name":"Tom"} <nil>
 - [Стандартная библиотека — sync.Mutex](https://pkg.go.dev/sync#Mutex)
 - [Стандартная библиотека — encoding/json.Marshal](https://pkg.go.dev/encoding/json#Marshal)
 - [Стандартная библиотека — unsafe.Sizeof](https://pkg.go.dev/unsafe#Sizeof)
-
-[methods-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-019-methods

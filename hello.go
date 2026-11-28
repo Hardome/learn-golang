@@ -128,11 +128,6 @@ func showCopies() {
 	copyOfTom.age = 18
 	fmt.Println(tom.age, copyOfTom.age) // 41 18
 
-	older := nextBirthday(tom)
-	fmt.Println(tom.age, older.age) // 41 42
-	incrementAge(&tom)
-	fmt.Println(tom.age) // 42
-
 	type profile struct {
 		owner person
 		tags  []string
@@ -142,10 +137,15 @@ func showCopies() {
 	copied.owner.age = 18
 	// Поле owner скопировано по значению. Оба среза по-прежнему используют общий массив.
 	copied.tags[0] = "struct"
-	fmt.Println(original.owner.age, copied.owner.age, original.tags[0]) // 42 18 struct
+	fmt.Println(original.owner.age, copied.owner.age, original.tags[0]) // 41 18 struct
 
 	copied.tags = []string{"copy"}
 	fmt.Println(original.tags[0], copied.tags[0]) // struct copy
+
+	older := nextBirthday(tom)
+	fmt.Println(tom.age, older.age) // 41 42
+	incrementAge(&tom)
+	fmt.Println(tom.age) // 42
 }
 
 func nextBirthday(value person) person {
