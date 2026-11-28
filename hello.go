@@ -71,7 +71,8 @@ func main() {
 	fmt.Println("После обмена:", left, right) // Вывод: После обмена: 2 1
 
 	area, perimeter := rectangle(3, 4)
-	fmt.Println("Площадь и периметр:", area, perimeter) // Вывод: Площадь и периметр: 12 14
+	fmt.Println("Площадь и периметр:", area, perimeter)       // Вывод: Площадь и периметр: 12 14
+	fmt.Println("Результат после defer:", resultAfterDefer()) // Результат после defer: 11
 
 	a := 8
 	fmt.Println("a до вызова:", a) // Вывод: a до вызова: 8
@@ -80,12 +81,11 @@ func main() {
 	// Вывод: x после прибавления: 28
 	fmt.Println("a после вызова:", a) // Вывод: a после вызова: 8
 
-	fmt.Println("Сумма трёх чисел:", sum(1, 2, 3)) // Вывод: Сумма трёх чисел: 6
 	fmt.Println("Сумма без аргументов:", sum())    // Вывод: Сумма без аргументов: 0
+	fmt.Println("Сумма трёх чисел:", sum(1, 2, 3)) // Вывод: Сумма трёх чисел: 6
 	values := []int{4, 5}
 	fmt.Println("Сумма элементов среза:", sum(values...)) // Вывод: Сумма элементов среза: 9
 
 	setFirst(7, values...)
-	fmt.Println("Срез после вызова:", values)                 // Вывод: Срез после вызова: [7 5]
-	fmt.Println("Результат после defer:", resultAfterDefer()) // Вывод: Результат после defer: 11
+	fmt.Println("Срез после вызова:", values) // Вывод: Срез после вызова: [7 5]
 }
