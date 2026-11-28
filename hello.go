@@ -3,48 +3,34 @@ package main
 import "fmt"
 
 func main() {
-	// := объявляет переменную, а = записывает новое значение в уже объявленную.
 	total := 10
 	total = 12
-	fmt.Println("После = 12:", total) // После = 12: 12
+	fmt.Println(total) // 12
 
-	// Составное присваивание выполняет операцию и сохраняет результат.
-	total += 3
-	fmt.Println("После += 3:", total) // После += 3: 15
-	total -= 5
-	fmt.Println("После -= 5:", total) // После -= 5: 10
-	total *= 3
-	fmt.Println("После *= 3:", total) // После *= 3: 30
-	total /= 4
-	fmt.Println("После /= 4:", total) // После /= 4: 7
-	total %= 4
-	fmt.Println("После %= 4:", total) // После %= 4: 3
-
-	// Поразрядные операторы тоже можно объединять с присваиванием.
-	var flags uint8 = 0b0101
-	flags &= 0b0110                             // Оставляем биты, установленные в маске.
-	fmt.Printf("После &= 0110: %04b\n", flags)  // После &= 0110: 0100
-	flags |= 0b0010                             // Устанавливаем выбранный бит.
-	fmt.Printf("После |= 0010: %04b\n", flags)  // После |= 0010: 0110
-	flags ^= 0b0100                             // Переключаем выбранный бит.
-	fmt.Printf("После ^= 0100: %04b\n", flags)  // После ^= 0100: 0010
-	flags &^= 0b0010                            // Сбрасываем выбранный бит.
-	fmt.Printf("После &^= 0010: %04b\n", flags) // После &^= 0010: 0000
-
-	step := 3
-	step <<= 2
-	fmt.Println("После <<= 2:", step) // После <<= 2: 12
-	step >>= 1
-	fmt.Println("После >>= 1:", step) // После >>= 1: 6
-
-	// Правая часть вычисляется до записи, поэтому старые значения можно обменять.
+	// Правая часть читает оба прежних значения до записи.
 	left, right := "лево", "право"
 	left, right = right, left
-	fmt.Println("После обмена:", left, right) // После обмена: право лево
+	fmt.Println(left, right) // право лево
 
-	// Индекс слева вычисляется до записи нового значения в index.
+	// Элемент массива выбирается по прежнему индексу 0.
 	items := [2]int{10, 20}
 	index := 0
 	index, items[index] = 1, 99
-	fmt.Println("Индекс и массив:", index, items) // Индекс и массив: 1 [99 20]
+	fmt.Println(index, items) // 1 [99 20]
+
+	total += 3
+	fmt.Println(total) // 15
+
+	var flags uint8 = 0b0101
+	flags |= 0b0010
+	fmt.Printf("%04b\n", flags) // 0111
+
+	items = [2]int{10, 20}
+	calls := 0
+	nextIndex := func() int {
+		calls++
+		return 0
+	}
+	items[nextIndex()] += 5
+	fmt.Println(items, calls) // [15 20] 1
 }
