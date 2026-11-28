@@ -1,212 +1,356 @@
-# Урок 028. Строки и руны
+# Урок 029. Пакет strings. Операции со строками
 
-Строка (`string`) в Go хранит последовательность байтов. В UTF-8 одна кодовая точка Unicode может занимать
-несколько байтов. Например, в `"Go"` две буквы, а в `"你好"` два иероглифа. `len` вернёт `2` и `6`, потому что
-считает байты. Для работы с отдельными кодовыми точками в Go используют тип `rune`.
+`strings` — пакет стандартной библиотеки Go для поиска, разбиения, объединения и преобразования строк.
+Go хранит строку как последовательность байтов. **Поиск подстроки сравнивает байты**, а операции вроде
+`ContainsAny` читают текст как последовательность рун Unicode.
 
-Примеры из [hello.go](hello.go) можно запустить командой `go run hello.go`.
+Строковые значения неизменяемы. Чтобы сохранить результат преобразования, присвойте его переменной.
+Фрагменты используют импорты `"fmt"` и `"strings"`. Команда `go run hello.go` запускает рабочие примеры.
+[Код примеров в hello.go](hello.go)
 
-## Какие кавычки использовать
+## Верхний и нижний регистр
 
-Строки определяются с помощью двойных ("") или обратных (``) кавычек, руны с помощью одинарных кавычек (''):
+### Верхний регистр
+
+`strings.ToUpper` переводит буквы Unicode в верхний регистр. Так можно вывести заголовок прописными буквами.
+Цифры и знаки препинания без регистрового варианта сохраняются.
 
 ```go
-fmt.Printf("%T\n", "П") // string — строка в двойных кавычках.
-fmt.Printf("%T\n", `П`) // string — строка в обратных кавычках.
-fmt.Printf("%T\n", 'П') // int32 — тип, для которого rune служит псевдонимом.
+fmt.Println(strings.ToUpper("Привет, Go! 42")) // ПРИВЕТ, GO! 42
 ```
 
-### Двойные и обратные кавычки
+### Нижний регистр
 
-Чтобы добавить перенос после `Go`, в двойных кавычках достаточно написать `\n`. В обратных кавычках та же
-запись даст два символа `\` и `n`. Такой вариант удобен, например, для пути вроде `C:\new`, где обратная
-косая черта должна остаться в строке. Если между обратными кавычками нажать Enter, перенос попадёт в строку.
+`strings.ToLower` переводит буквы в нижний регистр. Аргумент и результат имеют тип `string`.
 
 ```go
-fmt.Printf("%q %q\n", "Go\n", `Go\n`) // "Go\n" "Go\\n"
+fmt.Println(strings.ToLower("Привет, Go! 42")) // привет, go! 42
 ```
 
-## Длина строки
+### Отличие от JavaScript при смене регистра
 
-Посмотрим, какую длину Go вернёт для текста на разных языках.
+`strings.ToUpper` использует простое преобразование регистра Unicode, где результат для каждой руны —
+одна кодовая точка. В этой таблице для `ß` нет прописного соответствия, поэтому она сохраняется.
+В JavaScript `"straße".toUpperCase()` возвращает `"STRASSE"`, поскольку там допустима замена одной
+кодовой точки несколькими.
 
 ```go
-fmt.Println(len("Go"), len("Привет"), len("你好")) // 2 12 6
+fmt.Println(strings.ToUpper("straße")) // STRAßE
 ```
 
-Буквы `Go` занимают по одному байту, шесть букв в `Привет` — по два байта, а два иероглифа в `你好` — по три.
-`len` возвращает число байтов, которые уже есть в строке. Буквы и иероглифы, записанные в исходнике напрямую,
-попадают в строку в UTF-8. Через `\xNN` можно задать отдельный байт и получить в том числе строку с некорректным
-UTF-8.
+## Проверка префикса и суффикса
 
-### Подсчёт рун
+### Префикс
 
-Если нужно узнать, сколько в тексте кодовых точек, используем `utf8.RuneCountInString`. В `"П!"` их две,
-хотя байтов три. Видимая буква тоже может состоять из нескольких рун. Например, `é` можно записать одной
-кодовой точкой или как `e` и следующий за ней знак ударения.
+`strings.HasPrefix(s, prefix)` сравнивает префикс с началом `s`. Например, по `"report-"` можно отобрать
+имена файлов с отчётами.
 
 ```go
-text := "П!"
-fmt.Println(len(text), utf8.RuneCountInString(text)) // 3 2
-fmt.Println(utf8.RuneCountInString("é"), utf8.RuneCountInString("e\u0301")) // 1 2
+filename := "report-2026.csv"
+fmt.Println(strings.HasPrefix(filename, "report-")) // true
 ```
 
-## Перебор строки
+### Суффикс
 
-### Перебор по байтам
-
-Возьмём строку `"П!"` и посмотрим, что получится, если вывести её содержимое по одному элементу. Обычный
-цикл с индексом покажет, какие байты лежат в строке. `text[i]` возвращает `byte` (псевдоним `uint8`),
-а `%02X` выводит его значение двумя шестнадцатеричными цифрами.
+`strings.HasSuffix(s, suffix)` сравнивает суффикс с концом `s`. Обе проверки требуют точного совпадения
+байтов на нужном краю. Поэтому у файла с расширением `.csv` проверка `.CSV` возвращает `false`.
 
 ```go
-text := "П!"
-for i := 0; i < len(text); i++ {
-	fmt.Printf("%d: %02X\n", i, text[i]) // По строкам: 0: D0, 1: 9F, 2: 21
+filename := "report-2026.csv"
+fmt.Println(strings.HasSuffix(filename, ".csv")) // true
+fmt.Println(strings.HasSuffix(filename, ".CSV")) // false
+```
+
+## Поиск текста
+
+### Поиск целой подстроки
+
+`strings.Contains(s, substr)` ищет байты подстроки подряд в заданном порядке. Функция подходит для проверки
+фрагмента текста. Поиск отдельного слова потребовал бы ещё проверить его границы.
+
+```go
+text := "Hello World"
+fmt.Println(strings.Contains(text, "World")) // true
+fmt.Println(strings.Contains(text, "Work"))  // false
+```
+
+### Поиск любой руны из набора
+
+`strings.ContainsAny(s, chars)` рассматривает `chars` как набор рун. Достаточно **любой одной руны** из набора.
+Так можно проверить наличие запрещённых знаков. Для `"Work"` в примере достаточно совпадения по букве `W`.
+
+```go
+text := "Hello World"
+fmt.Println(strings.ContainsAny(text, "Work")) // true — в World есть W.
+fmt.Println(strings.ContainsAny(text, "xyz"))  // false
+```
+
+## Количество вхождений в строку
+
+`strings.Count(s, substr)` считает вхождения точной подстроки. Регистр имеет значение, поэтому `World`
+и `world` считаются отдельно. При отсутствии совпадений функция возвращает `0`.
+
+```go
+message := "Hello World. Good bye World"
+fmt.Println(strings.Count(message, "World")) // 2
+fmt.Println(strings.Count(message, "world")) // 0
+```
+
+### Перекрывающиеся вхождения
+
+`Count` считает **неперекрывающиеся вхождения**. В `"aaa"` первое совпадение с `"aa"` занимает байты `0` и `1`.
+Следующий поиск начинается после него. Одного оставшегося байта для второго `"aa"` мало.
+
+```go
+fmt.Println(strings.Count("aaa", "aa")) // 1
+```
+
+### Пустая подстрока
+
+Пустая подстрока совпадает в начале строки и после каждой руны. В `"Пр"` две руны, поэтому `Count` находит
+три позиции, хотя байтов четыре.
+
+```go
+fmt.Println(strings.Count("Пр", "")) // 3 — начало, место между буквами и конец.
+```
+
+## Объединение среза строк
+
+`strings.Join(elems, sep)` собирает `[]string` в одну строку. Разделитель вставляется только **между**
+соседними элементами. Для предложения подойдёт пробел, для объединения без разделителей — `""`.
+
+```go
+words := []string{"Привет", "прекрасный", "мир"}
+fmt.Println(strings.Join(words, " ")) // Привет прекрасный мир
+```
+
+Когда все части уже лежат в срезе, `Join` удобен и для больших наборов. Текущая реализация при двух и более
+элементах сначала вычисляет длину результата и резервирует буфер, затем записывает в него части и разделители.
+Так она обходится без конкатенации растущей строки на каждом шаге. Число выделений памяти зависит от реализации.
+
+## Замена подстроки
+
+### Замена заданного числа вхождений
+
+`strings.Replace(s, old, new, n)` заменяет первые `n` неперекрывающихся вхождений. Чтобы поменять первое
+`World`, передадим `1` и сохраним результат в `message`.
+
+```go
+message := "Hello World. Good bye World"
+message = strings.Replace(message, "World", "Go", 1)
+fmt.Println(message) // Hello Go. Good bye World
+```
+
+- `n > 0` — заменить до `n` совпадений. Если их меньше, заменяются все найденные.
+- `n == 0` — вернуть исходную строку.
+- `n < 0` — снять ограничение по количеству замен.
+
+Если `old` отсутствует, результат совпадает с исходной строкой.
+
+### Замена всех вхождений
+
+Для замены всех вхождений используйте `strings.ReplaceAll(s, old, new)`. Это то же поведение, что у `Replace`
+с `n = -1`, без отдельного аргумента для лимита.
+
+```go
+message := "Hello World. Good bye World"
+fmt.Println(strings.ReplaceAll(message, "World", "Go")) // Hello Go. Good bye Go
+```
+
+### Замена пустой подстроки
+
+Пустой `old` совпадает в тех же позициях, которые считает `Count(s, "")`. У `"Пр"` их три. Поэтому `ReplaceAll`
+вставит дефис перед `П`, между `П` и `р` и после `р`.
+
+```go
+fmt.Println(strings.ReplaceAll("Пр", "", "-")) // -П-р-
+```
+
+## Разбиение строки на части
+
+### Разбиение по разделителю
+
+`strings.Split(s, sep)` возвращает `[]string` из частей между совпадениями с разделителем `sep`.
+Например, номер можно разделить по дефисам. Формат `%q` показывает границы отдельных элементов.
+
+```go
+phone := "+7-987-654-32-10"
+fmt.Printf("%q\n", strings.Split(phone, "-")) // ["+7" "987" "654" "32" "10"]
+```
+
+Если непустого разделителя в строке нет, вся строка становится одним элементом. Между двумя соседними
+запятыми и после последней запятой текст пустой, поэтому **`Split` сохраняет пустые поля**.
+
+```go
+fmt.Printf("%q\n", strings.Split("7999", "-"))  // ["7999"]
+fmt.Printf("%q\n", strings.Split("a,,b,", ",")) // ["a" "" "b" ""]
+```
+
+### Пустой разделитель
+
+При `sep == ""` функция выделяет по одному элементу на последовательность UTF-8. В корректном UTF-8
+это одна руна на элемент. Если оба аргумента пусты, результат — пустой срез.
+
+```go
+fmt.Printf("%q\n", strings.Split("П!", "")) // ["П" "!"]
+```
+
+### Разбиение по пробельным символам
+
+`strings.Fields(s)` выделяет непустые части, разделённые пробельными символами Unicode. Подряд идущие пробелы,
+табуляции и переводы строк служат общей границей. Пробелы по краям строки пропускаются.
+
+```go
+text := " \tHello  World\nGood bye World "
+fmt.Printf("%q\n", strings.Fields(text)) // ["Hello" "World" "Good" "bye" "World"]
+```
+
+## Удаление с краёв строки
+
+### По набору рун
+
+`Trim` удаляет с обоих краёв руны, перечисленные во втором аргументе. `TrimLeft` работает с начала,
+`TrimRight` — с конца. На каждом краю обработка останавливается на первой руне вне набора.
+
+```go
+text := "01.2300"
+fmt.Println(strings.Trim(text, "0"))      // 1.23
+fmt.Println(strings.TrimLeft(text, "0"))  // 1.2300
+fmt.Println(strings.TrimRight(text, "0")) // 01.23
+fmt.Println(strings.Trim("?!Go!?", "!?")) // Go — порядок рун в наборе произвольный.
+```
+
+### По условию
+
+`TrimFunc`, `TrimLeftFunc` и `TrimRightFunc` работают с обоими краями, началом и концом соответственно.
+Вместо набора рун они принимают `func(rune) bool`. Значение `true` говорит, что руну с текущего края нужно убрать.
+В примере отсечение с каждого края заканчивается на первой цифре ASCII, поэтому внутренние дефисы остаются.
+
+```go
+phone := "+7-987-654-32-10!"
+outsideDigit := func(symbol rune) bool {
+	return symbol < '0' || symbol > '9'
 }
-fmt.Printf("%c\n", text[0]) // Ð: %c принимает значение байта за кодовую точку U+00D0.
+fmt.Println(strings.TrimFunc(phone, outsideDigit))      // 7-987-654-32-10
+fmt.Println(strings.TrimLeftFunc(phone, outsideDigit))  // 7-987-654-32-10!
+fmt.Println(strings.TrimRightFunc(phone, outsideDigit)) // +7-987-654-32-10
 ```
 
-### Перебор по рунам
+### Пробельные символы
 
-Из первого байта `D0` отдельно получается `Ð`, потому что `%c` принимает число за кодовую точку. Чтобы вывести
-букву `П` целиком, переберём строку через `for range`. Этот цикл декодирует UTF-8 и на каждом шаге даёт руну
-и смещение её первого байта. У `!` это смещение `2`, потому что перед ним два байта буквы `П`.
+`TrimSpace` убирает пробельные символы Unicode с обоих краёв. Это удобно для очистки пользовательского
+ввода с табуляцией или переводом строки в конце. Пробелы внутри значения сохраняются.
 
 ```go
-text := "П!"
-for offset, symbol := range text {
-	fmt.Printf("%d: %c\n", offset, symbol) // По строкам: 0: П, 2: !
+fmt.Printf("%q\n", strings.TrimSpace(" \t7 987 654 32 10\n")) // "7 987 654 32 10"
+```
+
+### Точный префикс и суффикс
+
+`TrimPrefix` удаляет указанную последовательность байтов с начала, `TrimSuffix` — с конца. Каждая функция
+удаляет совпадение **один раз**. Если на нужном краю совпадения нет, возвращается исходное значение.
+
+```go
+numberLine := "+7 987 654 32 10;"
+fmt.Printf("%q\n", strings.TrimPrefix(numberLine, "+7")) // " 987 654 32 10;" — пробел остаётся.
+fmt.Printf("%q\n", strings.TrimSuffix(numberLine, ";"))  // "+7 987 654 32 10"
+```
+
+На строке `"--Go"` разница видна по количеству удалённых дефисов.
+
+```go
+fmt.Println(strings.TrimPrefix("--Go", "-")) // -Go — снят один префикс.
+fmt.Println(strings.TrimLeft("--Go", "-"))   // Go — сняты все дефисы с начала.
+```
+
+## Индекс подстроки
+
+`Index`, `LastIndex` и варианты с `Any` возвращают **байтовое смещение**. В строке `"П: Go, Go!"`
+буква `П` занимает два байта, поэтому первое `Go` начинается с байта `4`.
+
+```text
+Байт    0  1 | 2 | 3 | 4  5 | 6 | 7 | 8  9 | 10
+Текст      П | : | ␠ | G  o | , | ␠ | G  o |  !
+```
+
+Знаком `␠` обозначен пробел.
+
+### Первое вхождение
+
+`strings.Index(s, substr)` находит начало первого вхождения. `-1` означает отсутствие совпадения.
+**Перед взятием подстроки проверьте индекс.** Ноль означает совпадение в начале, а отрицательный индекс
+при вычислении границы вызовет панику.
+
+```go
+text := "П: Go, Go!"
+offset := strings.Index(text, "Go")
+fmt.Println(offset) // 4
+if offset >= 0 {
+	fmt.Println(text[offset:]) // Go, Go!
 }
+fmt.Println(strings.Index(text, "go")) // -1
 ```
 
-### Подстрока на границе UTF-8
+### Последнее вхождение
 
-Что получится, если взять начало строки через `text[:1]`? Границы подстроки задаются в байтах, поэтому
-от `П` останется только `D0`. `utf8.ValidString` покажет, что UTF-8 получился некорректным.
+`strings.LastIndex(s, substr)` находит начало последнего вхождения. При отсутствии подстроки ответ тоже `-1`.
 
 ```go
-partial := "П!"[:1] // От буквы П остался только первый байт D0.
-fmt.Printf("% X %t\n", partial, utf8.ValidString(partial)) // D0 false
-for offset, symbol := range partial + "!" {
-	fmt.Printf("%d: %U\n", offset, symbol) // По строкам: 0: U+FFFD, 1: U+0021
-}
+text := "П: Go, Go!"
+fmt.Println(strings.LastIndex(text, "Go")) // 8 — начало второго Go.
 ```
 
-При переборе `range` возвращает руну замены `U+FFFD` за некорректный байт и сдвигается на один байт. Поэтому
-добавленный `!` всё равно попадёт в вывод.
+## Индекс любой руны из набора
 
-## Преобразование среза байтов в строку
+### Первое совпадение
 
-При чтении файла или ответа из сети данные могут прийти в виде `[]byte`. Если эти байты содержат текст
-в UTF-8, через `string(encoded)` получим строку с теми же байтами. Например, `D0 9F` кодируют `П`, а `21` — `!`.
+`strings.IndexAny(s, chars)` находит первую по ходу строки руну из `chars`. В `"П: Go, Go!"` руна `o`
+встречается раньше `!`, хотя в наборе `"!o"` она записана второй.
 
 ```go
-encoded := []byte{0xD0, 0x9F, 0x21}
-fmt.Println(string(encoded)) // П!
+text := "П: Go, Go!"
+fmt.Println(strings.IndexAny(text, "!o")) // 5 — байтовое смещение первой o.
+fmt.Println(strings.IndexAny(text, "xy")) // -1
 ```
 
-## Преобразование строки в срез байтов
+### Последнее совпадение
 
-Допустим, перед отправкой `"П!"` нужно заменить `!` на `?`. Оба знака занимают по одному байту в UTF-8,
-поэтому достаточно заменить один байт.
-
-1. Выполняем `encoded := []byte(text)`. В срезе три байта. `D0 9F` кодируют букву `П`, а `21` — знак `!`.
-2. Выполняем `encoded[2] = '?'`. Индексы начинаются с нуля, поэтому `2` — индекс третьего байта. На его место
-   записываем байт знака `?`.
-3. Выполняем `text = string(encoded)`. Go собирает из обновлённых байтов строку `"П?"` и присваивает её `text`.
+`strings.LastIndexAny(s, chars)` возвращает байтовое смещение последней подходящей руны или `-1`.
 
 ```go
-text := "П!"
-encoded := []byte(text)
-fmt.Printf("% X\n", encoded) // D0 9F 21
-encoded[2] = '?'
-text = string(encoded)
-fmt.Println(text) // П?
+text := "П: Go, Go!"
+fmt.Println(strings.LastIndexAny(text, "!o")) // 10 — байтовое смещение !.
 ```
 
-## Руны
+## Какую функцию выбрать
 
-Если нужно сохранить одну букву `П`, её можно записать в одинарных кавычках или указать её номер в Unicode.
-`rune` — псевдоним для `int32`, поэтому обе записи дают одно число, `1055` в десятичной системе или `0x041F`
-в шестнадцатеричной.
-
-```go
-var letter rune = 'П' // То же значение можно записать как 0x041F.
-var bytePairAsRune rune = 0xD09F
-fmt.Printf("%c %U %d\n", letter, letter, letter)      // П U+041F 1055
-fmt.Printf("%c %U\n", bytePairAsRune, bytePairAsRune) // 킟 U+D09F
-```
-
-Когда `П` входит в строку, в UTF-8 ей соответствуют два байта `D0 9F`. Число `0xD09F`, составленное из этих
-байтов, указывает на другую кодовую точку Unicode, `킟`. При чтении строки эти два байта нужно декодировать
-по правилам UTF-8, чтобы получить `П`.
-
-## Преобразование строки в срез рун
-
-Если нужен доступ к руне по порядку, например ко второй руне в строке, преобразуем текст в `[]rune`.
-В строке `"П!"` у `!` байтовое смещение `2`, а в срезе рун её индекс равен `1`.
-
-### Перебор среза рун по индексам
-
-Каждый элемент среза содержит одну кодовую точку. Поэтому обычный цикл с индексом выводит целые руны.
-
-```go
-text := "П!"
-letters := []rune(text) // Получаем срез из двух рун: 'П' и '!'.
-for i := 0; i < len(letters); i++ {
-	fmt.Printf("%d: %c\n", i, letters[i]) // По строкам: 0: П, 1: !
-}
-```
-
-## Преобразование рун в строку
-
-Если текст уже представлен срезом рун, передадим его в `string(letters)`. Go запишет каждую руну в UTF-8
-и соберёт полученные байты в одну строку.
-
-```go
-letters := []rune{0x041F, '!'} // 0x041F — кодовая точка буквы П.
-fmt.Println(string(letters)) // П!
-```
-
-## Неизменяемость строк
-
-Иногда нужно заменить в тексте букву. Попробуем сменить `П` на `A` в строке `"П!"` через присваивание по индексу.
-Выражение `text[0]` позволяет прочитать первый байт. Байты строки в Go не адресуемы. Это значит, что взять
-адрес первого байта через `&text[0]` нельзя. Выражение `text[0]` также нельзя поставить слева от `=`.
-
-```go
-text := "П!"
-text[0] = 'A' // Ошибка компиляции: cannot assign to text[0].
-```
-
-### Замена руны в тексте
-
-Чтобы заменить букву целиком, преобразуем строку в `[]rune`. Элементы среза адресуемы, поэтому в `letters[0]`
-можно записать новую руну. Затем `string(letters)` закодирует руны в UTF-8. В строке `text = string(letters)`
-слева стоит сама переменная, и ей можно присвоить новое строковое значение.
-
-```go
-text := "П!"
-fmt.Println(text, len(text)) // П! 3
-letters := []rune(text)
-letters[0] = 'A' // Заменяем всю П, хотя в UTF-8 она занимает два байта.
-text = string(letters)
-fmt.Println(text, len(text)) // A! 2, новая строка короче на один байт.
-```
+| Нужно | Функция |
+| --- | --- |
+| Проверить точную подстроку или любую руну из набора | `Contains` или `ContainsAny` |
+| Ограничить число замен или заменить все вхождения | `Replace` или `ReplaceAll` |
+| Сохранить пустые поля или выделить непустые части среди пробелов | `Split` или `Fields` |
+| Снять набор рун с краёв или один точный фрагмент | `Trim` или `TrimPrefix`/`TrimSuffix` |
+| Найти позицию подстроки или позицию любой подходящей руны | `Index` или `IndexAny` |
 
 ## Источники
 
 - [Go Specification · String types](https://go.dev/ref/spec#String_types)
-- [Go Specification · String literals](https://go.dev/ref/spec#String_literals)
-- [Go Specification · Numeric types](https://go.dev/ref/spec#Numeric_types)
-- [Go Specification · Rune literals](https://go.dev/ref/spec#Rune_literals)
-- [Go Specification · Index expressions](https://go.dev/ref/spec#Index_expressions)
-- [Go Specification · Assignments](https://go.dev/ref/spec#Assignments)
 - [Go Specification · Slice expressions](https://go.dev/ref/spec#Slice_expressions)
-- [Go Specification · For statements with range clause](https://go.dev/ref/spec#For_range)
-- [Go Specification · String conversions](https://go.dev/ref/spec#Conversions_to_and_from_a_string_type)
-- [Go Blog · Code points, characters, and runes](https://go.dev/blog/strings#code-points-characters-and-runes)
-- [unicode/utf8 · RuneCountInString](https://pkg.go.dev/unicode/utf8#RuneCountInString)
-- [unicode/utf8 · ValidString](https://pkg.go.dev/unicode/utf8#ValidString)
-- [fmt · Printing](https://pkg.go.dev/fmt#hdr-Printing)
+- `strings` · [ToUpper](https://pkg.go.dev/strings#ToUpper), [ToLower](https://pkg.go.dev/strings#ToLower)
+- [Реализация strings.ToUpper](https://go.dev/src/strings/strings.go#L668)
+- [ECMAScript · String.prototype.toUpperCase](https://tc39.es/ecma262/#sec-string.prototype.touppercase)
+- `strings` · [HasPrefix](https://pkg.go.dev/strings#HasPrefix), [HasSuffix](https://pkg.go.dev/strings#HasSuffix)
+- `strings` · [Contains](https://pkg.go.dev/strings#Contains), [ContainsAny](https://pkg.go.dev/strings#ContainsAny)
+- `strings` · [Count](https://pkg.go.dev/strings#Count), [Join](https://pkg.go.dev/strings#Join)
+- [Реализация strings.Join](https://go.dev/src/strings/strings.go#L468)
+- `strings` · [Replace](https://pkg.go.dev/strings#Replace), [ReplaceAll](https://pkg.go.dev/strings#ReplaceAll)
+- `strings` · [Split](https://pkg.go.dev/strings#Split), [Fields](https://pkg.go.dev/strings#Fields)
+- `strings` · [Trim](https://pkg.go.dev/strings#Trim), [TrimLeft](https://pkg.go.dev/strings#TrimLeft),
+  [TrimRight](https://pkg.go.dev/strings#TrimRight)
+- `strings` · [TrimFunc](https://pkg.go.dev/strings#TrimFunc), [TrimLeftFunc](https://pkg.go.dev/strings#TrimLeftFunc),
+  [TrimRightFunc](https://pkg.go.dev/strings#TrimRightFunc)
+- `strings` · [TrimSpace](https://pkg.go.dev/strings#TrimSpace), [TrimPrefix](https://pkg.go.dev/strings#TrimPrefix),
+  [TrimSuffix](https://pkg.go.dev/strings#TrimSuffix)
+- `strings` · [Index](https://pkg.go.dev/strings#Index), [LastIndex](https://pkg.go.dev/strings#LastIndex)
+- `strings` · [IndexAny](https://pkg.go.dev/strings#IndexAny), [LastIndexAny](https://pkg.go.dev/strings#LastIndexAny)
+- [unicode.IsSpace](https://pkg.go.dev/unicode#IsSpace) · [fmt · Printing](https://pkg.go.dev/fmt#hdr-Printing)

@@ -2,65 +2,125 @@ package main
 
 import (
 	"fmt"
-	"unicode/utf8"
+	"strings"
 )
 
 func main() {
-	// Кавычки определяют, будет литерал строкой или руной.
-	fmt.Printf("%T %T %T\n", "П", `П`, 'П') // string string int32
-	// Двойные кавычки обрабатывают \n, а обратные сохраняют его как два байта.
-	fmt.Printf("%q %q\n", "Go\n", `Go\n`)            // "Go\n" "Go\\n"
-	fmt.Println(len("Go"), len("Привет"), len("你好")) // 2 12 6
+	showCaseConversion()
+	showPrefixAndSuffix()
+	showTextSearch()
+	showOccurrenceCount()
+	showJoining()
+	showReplacement()
+	showSplitting()
+	showTrimming()
+	showSubstringPositions()
+	showRunePositions()
+}
 
-	text := "П!"
-	fmt.Println(len(text), utf8.RuneCountInString(text)) // 3 2, три байта и две руны.
-	// Букву é можно записать одной руной или буквой e со знаком ударения.
-	fmt.Println(utf8.RuneCountInString("é"), utf8.RuneCountInString("e\u0301")) // 1 2
+func showCaseConversion() {
+	fmt.Println(strings.ToUpper("Привет, Go! 42")) // ПРИВЕТ, GO! 42
 
-	// Индекс перебирает байты, включая оба байта буквы П.
-	for i := 0; i < len(text); i++ {
-		fmt.Printf("%d: %02X\n", i, text[i]) // По строкам: 0: D0, 1: 9F, 2: 21
+	fmt.Println(strings.ToLower("Привет, Go! 42")) // привет, go! 42
+	fmt.Println(strings.ToUpper("straße"))         // STRAßE — простое преобразование регистра сохраняет ß.
+}
+
+func showPrefixAndSuffix() {
+	filename := "report-2026.csv"
+	fmt.Println(strings.HasPrefix(filename, "report-")) // true — имя начинается с report-.
+
+	fmt.Println(strings.HasSuffix(filename, ".csv")) // true
+	fmt.Println(strings.HasSuffix(filename, ".CSV")) // false
+}
+
+func showTextSearch() {
+	text := "Hello World"
+	fmt.Println(strings.Contains(text, "World")) // true — подстрока есть целиком.
+	fmt.Println(strings.Contains(text, "Work"))  // false — такого фрагмента нет.
+
+	fmt.Println(strings.ContainsAny(text, "Work")) // true — в World есть W.
+	fmt.Println(strings.ContainsAny(text, "xyz"))  // false — ни одной из этих букв нет.
+}
+
+func showOccurrenceCount() {
+	message := "Hello World. Good bye World"
+	fmt.Println(strings.Count(message, "World")) // 2
+	fmt.Println(strings.Count(message, "world")) // 0 — нижний регистр в запросе.
+
+	fmt.Println(strings.Count("aaa", "aa")) // 1
+
+	fmt.Println(strings.Count("Пр", "")) // 3 — начало, место между буквами и конец.
+}
+
+func showJoining() {
+	words := []string{"Привет", "прекрасный", "мир"}
+	fmt.Println(strings.Join(words, " ")) // Привет прекрасный мир
+}
+
+func showReplacement() {
+	original := "Hello World. Good bye World"
+	message := strings.Replace(original, "World", "Go", 1)
+	fmt.Println(message) // Hello Go. Good bye World
+
+	fmt.Println(strings.ReplaceAll(original, "World", "Go")) // Hello Go. Good bye Go
+
+	fmt.Println(strings.ReplaceAll("Пр", "", "-")) // -П-р- — вставка в начале и после каждой руны.
+}
+
+func showSplitting() {
+	phone := "+7-987-654-32-10"
+	fmt.Printf("%q\n", strings.Split(phone, "-")) // ["+7" "987" "654" "32" "10"]
+
+	fmt.Printf("%q\n", strings.Split("7999", "-"))  // ["7999"]
+	fmt.Printf("%q\n", strings.Split("a,,b,", ",")) // ["a" "" "b" ""]
+
+	fmt.Printf("%q\n", strings.Split("П!", "")) // ["П" "!"]
+
+	text := " \tHello  World\nGood bye World "
+	fmt.Printf("%q\n", strings.Fields(text)) // ["Hello" "World" "Good" "bye" "World"]
+}
+
+func showTrimming() {
+	text := "01.2300"
+	fmt.Println(strings.Trim(text, "0"))      // 1.23 — удалили нули с обоих краёв.
+	fmt.Println(strings.TrimLeft(text, "0"))  // 1.2300 — удалили ноль с начала.
+	fmt.Println(strings.TrimRight(text, "0")) // 01.23 — удалили нули с конца.
+	fmt.Println(strings.Trim("?!Go!?", "!?")) // Go — порядок рун в наборе произвольный.
+
+	phone := "+7-987-654-32-10!"
+	outsideDigit := func(symbol rune) bool {
+		return symbol < '0' || symbol > '9'
 	}
-	fmt.Printf("%c\n", text[0]) // Ð: %c принимает значение байта за кодовую точку U+00D0.
-	// range даёт смещение первого байта руны и саму руну.
-	for offset, symbol := range text {
-		fmt.Printf("%d: %c\n", offset, symbol) // По строкам: 0: П, 2: !
+	fmt.Println(strings.TrimFunc(phone, outsideDigit))      // 7-987-654-32-10
+	fmt.Println(strings.TrimLeftFunc(phone, outsideDigit))  // 7-987-654-32-10!
+	fmt.Println(strings.TrimRightFunc(phone, outsideDigit)) // +7-987-654-32-10
+
+	fmt.Printf("%q\n", strings.TrimSpace(" \t7 987 654 32 10\n")) // "7 987 654 32 10"
+
+	numberLine := "+7 987 654 32 10;"
+	fmt.Printf("%q\n", strings.TrimPrefix(numberLine, "+7")) // " 987 654 32 10;" — пробел сохранился.
+	fmt.Printf("%q\n", strings.TrimSuffix(numberLine, ";"))  // "+7 987 654 32 10"
+
+	fmt.Println(strings.TrimPrefix("--Go", "-")) // -Go — снят один префикс.
+	fmt.Println(strings.TrimLeft("--Go", "-"))   // Go — сняты все дефисы с начала.
+}
+
+func showSubstringPositions() {
+	text := "П: Go, Go!"
+	offset := strings.Index(text, "Go")
+	fmt.Println(offset) // 4
+	if offset >= 0 {
+		fmt.Println(text[offset:]) // Go, Go!
 	}
-	// Строка может содержать неполный UTF-8: [:1] оставляет только байт D0.
-	partial := text[:1]
-	fmt.Printf("% X %t\n", partial, utf8.ValidString(partial)) // D0 false
-	for offset, symbol := range partial + "!" {
-		fmt.Printf("%d: %U\n", offset, symbol) // По строкам: 0: U+FFFD, 1: U+0021
-	}
+	fmt.Println(strings.Index(text, "go")) // -1 — такого сочетания с малой g нет.
 
-	// string сохраняет байты среза в том же порядке.
-	received := []byte{0xD0, 0x9F, 0x21}
-	fmt.Println(string(received)) // П!
-	// Для замены однобайтового знака ! меняем байт и собираем новую строку.
-	outgoing := "П!"
-	encoded := []byte(outgoing)
-	fmt.Printf("% X\n", encoded) // D0 9F 21
-	encoded[2] = '?'
-	outgoing = string(encoded)
-	fmt.Println(outgoing) // П?
+	fmt.Println(strings.LastIndex(text, "Go")) // 8 — начало второго Go.
+}
 
-	// Числовой код руны и байты её UTF-8-представления имеют разные значения.
-	var letter rune = 'П'
-	var bytePairAsRune rune = 0xD09F
-	fmt.Printf("%c %U %d\n", letter, letter, letter)      // П U+041F 1055
-	fmt.Printf("%c %U\n", bytePairAsRune, bytePairAsRune) // 킟 U+D09F
+func showRunePositions() {
+	text := "П: Go, Go!"
+	fmt.Println(strings.IndexAny(text, "!o")) // 5 — байтовое смещение первой o.
+	fmt.Println(strings.IndexAny(text, "xy")) // -1 — ни одной из этих рун нет.
 
-	// В срезе рун индекс показывает порядковый номер руны от нуля.
-	letters := []rune(text)
-	for i := 0; i < len(letters); i++ {
-		fmt.Printf("%d: %c\n", i, letters[i]) // По строкам: 0: П, 1: !
-	}
-	// При преобразовании среза рун в строку Go кодирует руны в UTF-8.
-	fmt.Println(string([]rune{0x041F, '!'})) // П!
-
-	// text[0] = 'A' // Ошибка компиляции: байту строки нельзя присвоить значение.
-	// Срез рун позволяет заменить всю букву, даже если изменится число байтов.
-	letters[0] = 'A'
-	modified := string(letters)
-	fmt.Println(text, modified, len(modified)) // П! A! 2
+	fmt.Println(strings.LastIndexAny(text, "!o")) // 10 — байтовое смещение !.
 }
