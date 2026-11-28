@@ -36,22 +36,22 @@ func demonstrateOperations() {
 	score, present := scores["Tom"]
 	delete(scores, "Tom") // Безопасно для nil-карты.
 	clear(scores)
-	fmt.Println(score, present, len(scores)) // 0 false 0
+	fmt.Println(score, present) // 0 false
 	// scores["Tom"] = 1 // Паника: запись в nil-карту.
 
 	scores = map[string]int{"Tom": 0}
-	if score, present := scores["Tom"]; present {
-		fmt.Println(score) // 0
-	}
+	score, present = scores["Tom"]
+	fmt.Println(score, present) // 0 true
 	score, present = scores["Kate"]
 	fmt.Println(score, present) // 0 false
 
-	scores["Tom"] = 32 // Заменяет значение существующей записи.
-	scores["Bob"] = 2  // Добавляет запись.
-	scores["Alice"]++  // Начинает с нулевого значения и записывает 1.
+	scores["Tom"] = 1
+	scores["Tom"]++   // Заменяет значение существующей записи.
+	scores["Bob"] = 2 // Добавляет запись.
+	scores["Alice"]++ // Начинает с нулевого значения и записывает 1.
 	delete(scores, "Bob")
 	delete(scores, "Kate") // Для отсутствующего ключа ничего не меняется.
-	fmt.Println(scores)    // map[Alice:1 Tom:32]
+	fmt.Println(scores)    // map[Alice:1 Tom:2]
 	clear(scores)
 	fmt.Println(len(scores), scores == nil) // 0 false
 }
@@ -103,19 +103,19 @@ func demonstrateCopying() {
 	shared = map[string]int{"Tom": 9}
 	fmt.Println(scores["Tom"], shared["Tom"]) // 2 9
 
-	type player struct{ score int }
-	players := map[string]player{"Tom": {score: 1}}
-	// players["Tom"].score++ // Ошибка компиляции: элемент карты неадресуем.
-	current := players["Tom"]
-	current.score++
-	players["Tom"] = current          // Записывает изменённую структуру обратно.
-	fmt.Println(players["Tom"].score) // 2
-
 	groups := map[string][]string{"dev": {"Tom"}}
 	cloned := maps.Clone(groups)
 	cloned["dev"][0] = "Bob"                             // Изменение видно через оба среза.
 	cloned["qa"] = []string{"Alice"}                     // Новый ключ появляется только в копии.
 	fmt.Println(groups["dev"], len(groups), len(cloned)) // [Bob] 1 2
+
+	type player struct{ score int }
+	players := map[string]player{"Tom": {score: 1}}
+	// players["Tom"].score++ // Ошибка компиляции. Элемент карты неадресуем.
+	current := players["Tom"]
+	current.score++
+	players["Tom"] = current
+	fmt.Println(players["Tom"].score) // 2
 }
 
 func demonstrateComparison() {
