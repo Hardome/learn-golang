@@ -16,7 +16,7 @@ Explain what happens and why in enough detail to understand the rule. Keep comma
 short example per rule by default and add another when it demonstrates different behavior. Cut repetition and prose
 that adds no understanding. Let the explanation determine the length.
 
-- `README.md` explains the lesson in Russian and stands on its own. Introduce the topic up front and include the
+- `README.md` explains the lesson in Russian and stands on its own. Open with the lesson's own topic and include the
   context, definitions, and short examples readers need to understand it without opening `hello.go`.
 - Use descriptive section headings for major concepts and subheadings for distinct rules, behaviors, and edge cases.
   Place short Go code blocks next to the points they illustrate. Use several focused blocks when a section covers
@@ -25,7 +25,7 @@ that adds no understanding. Let the explanation determine the length.
   it behaves that way, such as which field changes, what gets copied or shared, or why a line fails to compile or
   panics. Show the expected output beside the call. Use surrounding prose for the rule and its context.
 - Link to `hello.go` as a runnable companion for practice. Give the explanations in `README.md` itself.
-- Keep the README focused on the current topic. Link to related lesson branches where helpful.
+- Link to other lessons only for a fuller explanation of a related topic, at the point where that topic comes up.
 - `hello.go` contains runnable, idiomatic examples in `package main`. Use descriptive Go identifiers and Russian
   comments to explain each example, including edge cases. Show exact output beside the relevant calls. Document examples
   that fail to compile or panic in comments or in the README.

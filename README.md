@@ -1,83 +1,107 @@
-# Урок 026. Управление зависимостями с помощью папки vendor
+# Урок 027. Создание разделяемого модуля
 
-Каталог `vendor` хранит копии внешних пакетов рядом с кодом проекта. В режиме vendoring Go берёт из этого
-каталога пакеты, нужные для сборки и тестов. С уже установленным подходящим Go проект можно собрать даже
-при пустом кеше модулей и без доступа к сети. Это удобно, например, для сборок в CI без доступа к прокси Go.
+Когда один и тот же пакет нужен нескольким приложениям, его можно вынести в отдельный модуль с собственным
+`go.mod`. В этом уроке пакет `messages` формирует приветствие по имени. Приложение импортирует его из модуля
+`example.com/messages` и берёт исходники из локального каталога `greetings`.
 
-Возьмём готовый пример из [урока 025 о внешних зависимостях][dependencies-lesson]. Пакет `rsc.io/quote` уже
-импортируется в [hello.go](hello.go), а его версия указана в [go.mod](go.mod).
+## Создание модуля библиотеки
 
-## Как создать vendor
+Чтобы повторить пример с нуля, создайте в проекте каталог `greetings` и выполните в нём
+`go mod init example.com/messages`. Команда создаст [greetings/go.mod](greetings/go.mod) и запишет в него путь
+модуля. Этот файл определяет корень модуля библиотеки.
 
-Из корня модуля выполните `go mod vendor`. В этой ветке каталог уже сгенерирован. Go копирует пакеты,
-которые нужны для сборки и тестирования пакетов текущего модуля, включая транзитивные импорты. Из одного
-модуля в `vendor` могут попасть только отдельные пакеты. Зависимости, нужные исключительно тестам
-внешних модулей, в каталог не входят.
+Добавьте в тот же каталог [messages.go](greetings/messages.go).
 
-Go записывает пути пакетов и версии их модулей в [vendor/modules.txt](vendor/modules.txt).
-В этом файле есть такая запись.
+```go
+package messages
 
-```text
-# rsc.io/quote v1.5.2
-## explicit
-rsc.io/quote
+// Greeting возвращает приветствие для переданного имени.
+func Greeting(name string) string {
+	return "Привет, " + name + "!"
+}
 ```
 
-Первая строка указывает путь и версию модуля, последняя — путь скопированного пакета.
-Метка `explicit` означает, что модуль указан в директиве `require` в `go.mod`. Она также встречается
-у требований с пометкой `// indirect`.
+Функция `Greeting` объявлена на уровне пакета, и её имя начинается с заглавной буквы. Поэтому она доступна
+из пакета `main`.
 
-## Сборка из vendor
+## Импорт пакета в приложении
 
-Начиная с Go 1.14, команды сборки автоматически выбирают `vendor`, если каталог лежит в корне модуля
-и директива `go` в `go.mod` указывает версию 1.14 или выше. Для этого урока достаточно `go run .`.
-Режим можно указать явно.
+В корне проекта выполните `go mod init github.com/Hardome/learn-golang`. Этот модуль будет содержать приложение.
+Рядом с его `go.mod` добавьте [hello.go](hello.go).
 
-```text
-go run -mod=vendor .
-go build -mod=vendor .
+```go
+package main
+
+import (
+	"fmt"
+
+	"example.com/messages" // Пакет находится в корне модуля библиотеки.
+)
+
+func main() {
+	fmt.Println(messages.Greeting("Анна")) // Привет, Анна!
+}
 ```
 
-Флаг `-mod=vendor` для `go run` ставят перед точкой. Всё после точки передаётся запущенной программе.
-Если нужного пакета нет в `vendor`, сборка завершится ошибкой. Чтобы явно собрать из кеша модулей
-с загрузкой недостающих зависимостей при необходимости, используйте `go build -mod=mod .`.
+Путь импорта `example.com/messages` совпадает с путём модуля, потому что пакет лежит в его корне. В вызове
+`messages.Greeting` имя `messages` взято из строки `package messages`.
 
-## Как обновить vendor
+## Подключение локального модуля
 
-При обновлении зависимости из примера выполните команды по порядку.
+Чтобы Go взял исходники `example.com/messages` из каталога `greetings`, выполните из корня приложения:
 
 ```text
-go get rsc.io/quote@latest
+go mod edit -replace="example.com/messages=./greetings"
 go mod tidy
-go mod vendor
 ```
 
-Последняя команда пересоздаёт каталог целиком, поэтому ручные правки в нём будут потеряны.
-После изменения импортов достаточно выполнить `go mod tidy` и `go mod vendor`. `go get`, `go mod tidy` и
-`go mod vendor` могут обращаться к кешу модулей и сети даже при наличии `vendor`.
+Первая команда записывает `replace` в [go.mod](go.mod) приложения. Путь `./greetings` отсчитывается от каталога,
+где лежит этот `go.mod`. В каталоге замены должен быть свой `go.mod` с путём `example.com/messages`.
 
-### Если Go сообщает об ошибке
+`replace` задаёт источник кода. Чтобы модуль стал зависимостью приложения, нужно ещё требование `require`.
+`go mod tidy` добавляет его, когда находит импорт `example.com/messages` в `hello.go`. В `go.mod` приложения
+появляются две записи.
 
-- `inconsistent vendoring` означает, что требования из `go.mod` расходятся с `vendor/modules.txt`.
-  Запустите `go mod vendor` ещё раз.
-- Предупреждение `"all" matched no packages` при запуске `go mod vendor` в пустом модуле означает,
-  что Go не нашёл пакетов для обработки. Добавьте исходники с импортом зависимости и повторите команду.
+```text
+require example.com/messages v0.0.0-00010101000000-000000000000
 
-## Когда хранить vendor в Git
+replace example.com/messages => ./greetings
+```
 
-Если репозиторий должен собираться без скачивания внешних пакетов, сохраняйте `vendor` вместе с `go.mod`
-и `go.sum`. Это увеличивает размер репозитория, но позволяет получить исходники зависимостей при
-клонировании. Если ваш модуль используют как библиотеку, его `vendor` может пригодиться для сборки самой
-библиотеки. Проекты, которые её импортируют, используют правила разрешения зависимостей своего модуля.
+Для новой зависимости с такой заменой `go mod tidy` подставляет псевдоверсию. Если другое приложение использует
+ту же локальную библиотеку, оно добавляет `replace` в свой `go.mod`. Например, из соседнего с `greetings`
+каталога путь к библиотеке будет `../greetings`.
+
+## Структура проекта и запуск
+
+В этой ветке исходники и оба файла `go.mod` уже на месте.
+
+```text
+.                     # модуль приложения
+├── go.mod
+├── hello.go           # пакет main
+└── greetings/        # модуль example.com/messages
+    ├── go.mod
+    └── messages.go    # пакет messages
+```
+
+Из корня проекта выполните `go run .`. В этом примере `go run hello.go` даёт тот же результат.
+
+```text
+Привет, Анна!
+```
 
 ## Источники
 
-- [Go Modules Reference · Vendoring](https://go.dev/ref/mod#vendoring)
-- [Go Modules Reference · go mod vendor](https://go.dev/ref/mod#go-mod-vendor)
-- [Go Modules Reference · Build commands](https://go.dev/ref/mod#build-commands)
-- [Go Modules Reference · go get](https://go.dev/ref/mod#go-get)
-- [Go 1.14 Release Notes · Vendoring](https://go.dev/doc/go1.14#vendoring)
+- [Go Modules Reference · Modules, packages, and versions](https://go.dev/ref/mod#modules-overview)
+- [Go Modules Reference · go mod init](https://go.dev/ref/mod#go-mod-init)
+- [Go Specification · Exported identifiers](https://go.dev/ref/spec#Exported_identifiers)
+- [Go Specification · Import declarations](https://go.dev/ref/spec#Import_declarations)
+- [Go Modules Reference · go mod edit](https://go.dev/ref/mod#go-mod-edit)
+- [Go Modules Reference · replace](https://go.dev/ref/mod#go-mod-file-replace)
+- [Go Modules Reference · require](https://go.dev/ref/mod#go-mod-file-require)
+- [Go Modules Reference · go mod tidy](https://go.dev/ref/mod#go-mod-tidy)
+- [Исходный код Go · относительный путь replace](https://go.dev/src/cmd/go/internal/modload/modfile.go#L350)
+- [Исходный код Go · псевдоверсия локальной замены](https://go.dev/src/cmd/go/internal/modload/import.go#L533)
 - [cmd/go · go run](https://pkg.go.dev/cmd/go#hdr-Compile_and_run_Go_program)
-- [Исходный код go mod vendor · формирование modules.txt](https://go.dev/src/cmd/go/internal/modcmd/vendor.go)
-
-[dependencies-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-025-external-dependencies
+- [fmt.Println](https://pkg.go.dev/fmt#Println)

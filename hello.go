@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 
-	"rsc.io/quote" // Пакет из внешнего модуля.
+	"example.com/messages" // Пакет из локального каталога greetings.
 )
 
 func main() {
-	// Обе функции возвращают фиксированные строки.
-	fmt.Println(quote.Go())  // Don't communicate by sharing memory, share memory by communicating.
-	fmt.Println(quote.Opt()) // If a program is too slow, it must have a loop.
+	// Библиотека формирует строку, а приложение выводит её на экран.
+	fmt.Println(messages.Greeting("Анна")) // Привет, Анна!
 }
