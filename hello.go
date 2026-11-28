@@ -3,10 +3,14 @@ package main
 import "fmt"
 
 func main() {
-	next := outer()
-	next() // 6
-	next() // 7
-	next() // 8
+	next := newCounter(5)
+	fmt.Println(next(), next(), next()) // 6 7 8
+
+	first := newCounter(0)
+	sameCounter := first
+	second := newCounter(10)
+	// Копия функции использует тот же start. У второго счётчика свой start.
+	fmt.Println(first(), sameCounter(), second()) // 1 2 11
 
 	showMultiplier()
 	showCapture()
@@ -14,16 +18,6 @@ func main() {
 	showDeferredValues()    // конец, затем начало (две строки)
 	fmt.Println(adjusted()) // 5
 	showGoroutineArgument()
-	showRecursion()
-}
-
-// outer возвращает функцию, которая при каждом вызове меняет ту же n.
-func outer() func() {
-	n := 5
-	return func() {
-		n++
-		fmt.Println(n)
-	}
 }
 
 func showMultiplier() {
@@ -47,12 +41,6 @@ func showCapture() {
 	// Замыкание читает ту же переменную после присваивания.
 	label = "после"
 	fmt.Println(readLabel()) // после
-
-	first := newCounter(0)
-	sameCounter := first
-	second := newCounter(10)
-	// Копия функции разделяет состояние с оригиналом. У второго счётчика своё состояние.
-	fmt.Println(first(), sameCounter(), second()) // 1 2 11
 
 	// Два разных литерала захватывают одну переменную sum.
 	add, total := newAccumulator()
@@ -120,17 +108,4 @@ func showGoroutineArgument() {
 	go func(input int) { result <- input * 2 }(value)
 	value = 9
 	fmt.Println(<-result) // 14
-}
-
-func showRecursion() {
-	// Предварительное объявление вводит имя в область видимости тела литерала.
-	// Этот пример рассчитан на малые неотрицательные числа.
-	var factorial func(int) int
-	factorial = func(value int) int {
-		if value < 2 {
-			return 1
-		}
-		return value * factorial(value-1)
-	}
-	fmt.Println(factorial(5)) // 120
 }
