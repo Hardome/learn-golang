@@ -9,10 +9,10 @@ type Point struct {
 func main() {
 	showAddress()
 	showNilAndNew()
-	showPointerToPointer()
 	showPointerArray()
 	showPointerCopy()
 	showPointerParameters()
+	showPointerToPointer()
 	showPointerResults()
 	showAddressableValues()
 
@@ -101,7 +101,6 @@ func showPointerParameters() {
 	squareValue(number)
 	fmt.Println(number) // 5
 
-	fmt.Println(number) // 5
 	// Параметр получает копию адреса. Запись через него меняет number.
 	squareThroughPointer(&number)
 	fmt.Println(number) // 25
