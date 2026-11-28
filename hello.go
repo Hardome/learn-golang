@@ -73,25 +73,26 @@ var _ ageUpdater = (*person)(nil)
 // var _ ageUpdater = person{} // Ошибка компиляции: набор person не содержит updateAge.
 
 func main() {
-	showLibrary()
 	showPerson()
 	showReceivers()
+	showLibrary()
 	showAddressabilityAndInterfaces()
 	showMethodFunctions()
 	showNilReceiver()
+	showGenericMethod()
 }
 
 func showLibrary() {
-	lib := library{"Book1", "Book2", "Book3"}
-	lib.print() // Book1, Book2, Book3 на отдельных строках
+	lib := library{"Book1", "Book2"}
+	lib.print() // Book1, Book2 на отдельных строках
 
 	lib.replaceFirst("Go")
-	fmt.Println(lib)      // [Go Book2 Book3]
+	fmt.Println(lib)      // [Go Book2]
 	lib.keepFirst()       // 1
-	fmt.Println(len(lib)) // 3
+	fmt.Println(len(lib)) // 2
 
-	lib.add("Book4") // lib адресуемая. Метод получает &lib и обновляет описание среза.
-	fmt.Println(lib) // [Go Book2 Book3 Book4]
+	lib.add("Book3") // lib адресуемая. Метод получает &lib и обновляет описание среза.
+	fmt.Println(lib) // [Go Book2 Book3]
 }
 
 func showPerson() {
@@ -158,4 +159,20 @@ func showNilReceiver() {
 
 	var namer interface{ nameOrUnknown() string } = missing
 	fmt.Println(namer == nil, namer.nameOrUnknown()) // false unknown
+}
+
+type shelf[T any] []T
+
+func (s shelf[T]) collect[R any](convert func(T) R) []R {
+	result := make([]R, 0, len(s))
+	for _, item := range s {
+		result = append(result, convert(item))
+	}
+	return result
+}
+
+func showGenericMethod() {
+	books := shelf[string]{"Go", "Methods"}
+	lengths := books.collect[int](func(title string) int { return len(title) })
+	fmt.Println(lengths) // [2 7]
 }
