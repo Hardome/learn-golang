@@ -1,29 +1,30 @@
 # Урок 025. Загрузка внешних зависимостей
 
-Внешний пакет можно импортировать в свой код так же, как пакет стандартной библиотеки. Команда `go` берёт
-внешний пакет из версии модуля, выбранной для проекта. В этом уроке подключим демонстрационный пакет
-`rsc.io/quote`, вызовем две функции и посмотрим, как меняются `go.mod` и `go.sum`.
+В записи `import` указывают путь пакета. Для внешнего пакета команда `go` берёт исходники из выбранной версии
+модуля. Требования к версиям хранятся в `go.mod`, а проверочные суммы скачанных файлов — в `go.sum`.
 
 ## Добавление зависимости
 
-В новом каталоге сначала выполните `go mod init example.org/quotes`. Команда создаст в нём `go.mod`.
-У этого урока уже есть [go.mod](go.mod), поэтому готовый пример можно сразу запустить из корня репозитория.
-
-Чтобы добавить зависимость в новый модуль, выполните:
+В этой ветке зависимости уже записаны в [go.mod](go.mod), поэтому готовый пример запускается из корня
+командой `go run .`. Чтобы проследить изменения файлов, начните в отдельном пустом каталоге.
 
 ```text
+go mod init example.org/quotes
 go get rsc.io/quote@v1.5.2
 ```
 
-`rsc.io/quote` здесь одновременно путь импорта пакета и путь модуля, потому что пакет находится в корне
-модуля. Суффикс `@v1.5.2` запрашивает конкретную версию. В режиме модулей начиная с Go 1.18 команда
-`go get` управляет зависимостями проекта. Она обновляет требования в `go.mod` и при необходимости
-скачивает модули. После первого скачивания в примере появляется и `go.sum`.
+После `go mod init` файл содержит директивы `module` и `go`. Требований `require` пока нет.
+`go get` добавляет требование с указанной версией `v1.5.2` и при необходимости загружает модули.
+В `go.sum` появляются их проверочные суммы.
 
-Пока исходники проекта ещё не импортируют `rsc.io/quote`, команда добавляет запись с пометкой `// indirect`:
+Поскольку в каталоге пока нет файла с импортом `rsc.io/quote`, требование входит в блок с пометкой `// indirect`.
 
 ```text
-rsc.io/quote v1.5.2 // indirect
+require (
+    golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c // indirect
+    rsc.io/quote v1.5.2 // indirect
+    rsc.io/sampler v1.3.0 // indirect
+)
 ```
 
 ## Импорт пакета и запуск
@@ -46,14 +47,16 @@ func main() {
 }
 ```
 
-В `import` указывают путь пакета. Версия хранится в требованиях модуля. Из его корня выполните
-`go mod tidy`, затем `go run .`. Программа напечатает две строки, указанные в комментариях.
+Пакет лежит в корне модуля `rsc.io/quote`, поэтому путь пакета совпадает с путём модуля.
+Версия указана в `require`. Из корня пробного модуля выполните `go mod tidy`, затем `go run .`.
+Программа напечатает две строки из комментариев.
 
 ### Прямые и косвенные зависимости
 
-После добавления импорта `go mod tidy` убирает у `rsc.io/quote` пометку `// indirect`, потому что теперь
-его пакет импортируется в `hello.go`. Пакет `quote` использует `rsc.io/sampler`, а тот использует
-`golang.org/x/text`. Для нашего модуля это косвенные зависимости. В `go.mod` урока получились такие требования:
+`go mod tidy` сопоставляет требования с импортами исходных файлов. Поскольку `hello.go` импортирует
+`rsc.io/quote`, его модуль становится прямой зависимостью. Пакет `quote` использует `rsc.io/sampler`,
+а тот использует `golang.org/x/text`. Эти два модуля остаются косвенными зависимостями.
+Так выглядит итоговый блок требований в `go.mod` этой ветки.
 
 ```text
 require rsc.io/quote v1.5.2
@@ -98,11 +101,12 @@ go env GOMODCACHE
 
 О пути модуля и структуре `go.mod` подробнее в [уроке 023 о модулях][modules-lesson].
 
+[modules-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-023-modules
+
 ## Источники
 
 - [Go Modules Reference · go mod init](https://go.dev/ref/mod#go-mod-init)
 - [Go Modules Reference · go get](https://go.dev/ref/mod#go-get)
-- [Go 1.18 Release Notes · go get](https://go.dev/doc/go1.18#go-get)
 - [Go Modules Reference · require](https://go.dev/ref/mod#go-mod-file-require)
 - [Go Modules Reference · go mod tidy](https://go.dev/ref/mod#go-mod-tidy)
 - [Go Modules Reference · go.sum files](https://go.dev/ref/mod#go-sum-files)
@@ -112,5 +116,3 @@ go env GOMODCACHE
 - [quote.Go](https://pkg.go.dev/rsc.io/quote@v1.5.2#Go) · [quote.Opt](https://pkg.go.dev/rsc.io/quote@v1.5.2#Opt)
 - [rsc.io/quote · go.mod](https://github.com/rsc/quote/blob/v1.5.2/go.mod)
 - [rsc.io/sampler · go.mod](https://github.com/rsc/sampler/blob/v1.3.0/go.mod)
-
-[modules-lesson]: https://github.com/Hardome/learn-golang/tree/lesson-023-modules
