@@ -12,9 +12,15 @@ Stay within the current lesson topic. When the user provides material, use its q
 Correct inaccuracies and add only edge cases that change the result or clarify a rule of this topic. Mention adjacent
 topics briefly or link to them.
 
+When the supplied material has a clear structure, preserve its topic order and keep distinct topics in separate
+sections or subsections.
+
 Explain what happens and why in enough detail to understand the rule. Keep commands and routine steps brief. Use one
 short example per rule by default and add another when it demonstrates different behavior. Cut repetition and prose
 that adds no understanding. Let the explanation determine the length.
+
+Use plain language. Where it helps the reader, explain when the rule matters, how to apply it, and why the example
+produces the shown result.
 
 - `README.md` explains the lesson in Russian and stands on its own. Open with the lesson's own topic and include the
   context, definitions, and short examples readers need to understand it without opening `hello.go`.

@@ -1,107 +1,212 @@
-# Урок 027. Создание разделяемого модуля
+# Урок 028. Строки и руны
 
-Когда один и тот же пакет нужен нескольким приложениям, его можно вынести в отдельный модуль с собственным
-`go.mod`. В этом уроке пакет `messages` формирует приветствие по имени. Приложение импортирует его из модуля
-`example.com/messages` и берёт исходники из локального каталога `greetings`.
+Строка (`string`) в Go хранит последовательность байтов. В UTF-8 одна кодовая точка Unicode может занимать
+несколько байтов. Например, в `"Go"` две буквы, а в `"你好"` два иероглифа. `len` вернёт `2` и `6`, потому что
+считает байты. Для работы с отдельными кодовыми точками в Go используют тип `rune`.
 
-## Создание модуля библиотеки
+Примеры из [hello.go](hello.go) можно запустить командой `go run hello.go`.
 
-Чтобы повторить пример с нуля, создайте в проекте каталог `greetings` и выполните в нём
-`go mod init example.com/messages`. Команда создаст [greetings/go.mod](greetings/go.mod) и запишет в него путь
-модуля. Этот файл определяет корень модуля библиотеки.
+## Какие кавычки использовать
 
-Добавьте в тот же каталог [messages.go](greetings/messages.go).
+Строки определяются с помощью двойных ("") или обратных (``) кавычек, руны с помощью одинарных кавычек (''):
 
 ```go
-package messages
+fmt.Printf("%T\n", "П") // string — строка в двойных кавычках.
+fmt.Printf("%T\n", `П`) // string — строка в обратных кавычках.
+fmt.Printf("%T\n", 'П') // int32 — тип, для которого rune служит псевдонимом.
+```
 
-// Greeting возвращает приветствие для переданного имени.
-func Greeting(name string) string {
-	return "Привет, " + name + "!"
+### Двойные и обратные кавычки
+
+Чтобы добавить перенос после `Go`, в двойных кавычках достаточно написать `\n`. В обратных кавычках та же
+запись даст два символа `\` и `n`. Такой вариант удобен, например, для пути вроде `C:\new`, где обратная
+косая черта должна остаться в строке. Если между обратными кавычками нажать Enter, перенос попадёт в строку.
+
+```go
+fmt.Printf("%q %q\n", "Go\n", `Go\n`) // "Go\n" "Go\\n"
+```
+
+## Длина строки
+
+Посмотрим, какую длину Go вернёт для текста на разных языках.
+
+```go
+fmt.Println(len("Go"), len("Привет"), len("你好")) // 2 12 6
+```
+
+Буквы `Go` занимают по одному байту, шесть букв в `Привет` — по два байта, а два иероглифа в `你好` — по три.
+`len` возвращает число байтов, которые уже есть в строке. Буквы и иероглифы, записанные в исходнике напрямую,
+попадают в строку в UTF-8. Через `\xNN` можно задать отдельный байт и получить в том числе строку с некорректным
+UTF-8.
+
+### Подсчёт рун
+
+Если нужно узнать, сколько в тексте кодовых точек, используем `utf8.RuneCountInString`. В `"П!"` их две,
+хотя байтов три. Видимая буква тоже может состоять из нескольких рун. Например, `é` можно записать одной
+кодовой точкой или как `e` и следующий за ней знак ударения.
+
+```go
+text := "П!"
+fmt.Println(len(text), utf8.RuneCountInString(text)) // 3 2
+fmt.Println(utf8.RuneCountInString("é"), utf8.RuneCountInString("e\u0301")) // 1 2
+```
+
+## Перебор строки
+
+### Перебор по байтам
+
+Возьмём строку `"П!"` и посмотрим, что получится, если вывести её содержимое по одному элементу. Обычный
+цикл с индексом покажет, какие байты лежат в строке. `text[i]` возвращает `byte` (псевдоним `uint8`),
+а `%02X` выводит его значение двумя шестнадцатеричными цифрами.
+
+```go
+text := "П!"
+for i := 0; i < len(text); i++ {
+	fmt.Printf("%d: %02X\n", i, text[i]) // По строкам: 0: D0, 1: 9F, 2: 21
+}
+fmt.Printf("%c\n", text[0]) // Ð: %c принимает значение байта за кодовую точку U+00D0.
+```
+
+### Перебор по рунам
+
+Из первого байта `D0` отдельно получается `Ð`, потому что `%c` принимает число за кодовую точку. Чтобы вывести
+букву `П` целиком, переберём строку через `for range`. Этот цикл декодирует UTF-8 и на каждом шаге даёт руну
+и смещение её первого байта. У `!` это смещение `2`, потому что перед ним два байта буквы `П`.
+
+```go
+text := "П!"
+for offset, symbol := range text {
+	fmt.Printf("%d: %c\n", offset, symbol) // По строкам: 0: П, 2: !
 }
 ```
 
-Функция `Greeting` объявлена на уровне пакета, и её имя начинается с заглавной буквы. Поэтому она доступна
-из пакета `main`.
+### Подстрока на границе UTF-8
 
-## Импорт пакета в приложении
-
-В корне проекта выполните `go mod init github.com/Hardome/learn-golang`. Этот модуль будет содержать приложение.
-Рядом с его `go.mod` добавьте [hello.go](hello.go).
+Что получится, если взять начало строки через `text[:1]`? Границы подстроки задаются в байтах, поэтому
+от `П` останется только `D0`. `utf8.ValidString` покажет, что UTF-8 получился некорректным.
 
 ```go
-package main
-
-import (
-	"fmt"
-
-	"example.com/messages" // Пакет находится в корне модуля библиотеки.
-)
-
-func main() {
-	fmt.Println(messages.Greeting("Анна")) // Привет, Анна!
+partial := "П!"[:1] // От буквы П остался только первый байт D0.
+fmt.Printf("% X %t\n", partial, utf8.ValidString(partial)) // D0 false
+for offset, symbol := range partial + "!" {
+	fmt.Printf("%d: %U\n", offset, symbol) // По строкам: 0: U+FFFD, 1: U+0021
 }
 ```
 
-Путь импорта `example.com/messages` совпадает с путём модуля, потому что пакет лежит в его корне. В вызове
-`messages.Greeting` имя `messages` взято из строки `package messages`.
+При переборе `range` возвращает руну замены `U+FFFD` за некорректный байт и сдвигается на один байт. Поэтому
+добавленный `!` всё равно попадёт в вывод.
 
-## Подключение локального модуля
+## Преобразование среза байтов в строку
 
-Чтобы Go взял исходники `example.com/messages` из каталога `greetings`, выполните из корня приложения:
+При чтении файла или ответа из сети данные могут прийти в виде `[]byte`. Если эти байты содержат текст
+в UTF-8, через `string(encoded)` получим строку с теми же байтами. Например, `D0 9F` кодируют `П`, а `21` — `!`.
 
-```text
-go mod edit -replace="example.com/messages=./greetings"
-go mod tidy
+```go
+encoded := []byte{0xD0, 0x9F, 0x21}
+fmt.Println(string(encoded)) // П!
 ```
 
-Первая команда записывает `replace` в [go.mod](go.mod) приложения. Путь `./greetings` отсчитывается от каталога,
-где лежит этот `go.mod`. В каталоге замены должен быть свой `go.mod` с путём `example.com/messages`.
+## Преобразование строки в срез байтов
 
-`replace` задаёт источник кода. Чтобы модуль стал зависимостью приложения, нужно ещё требование `require`.
-`go mod tidy` добавляет его, когда находит импорт `example.com/messages` в `hello.go`. В `go.mod` приложения
-появляются две записи.
+Допустим, перед отправкой `"П!"` нужно заменить `!` на `?`. Оба знака занимают по одному байту в UTF-8,
+поэтому достаточно заменить один байт.
 
-```text
-require example.com/messages v0.0.0-00010101000000-000000000000
+1. Выполняем `encoded := []byte(text)`. В срезе три байта. `D0 9F` кодируют букву `П`, а `21` — знак `!`.
+2. Выполняем `encoded[2] = '?'`. Индексы начинаются с нуля, поэтому `2` — индекс третьего байта. На его место
+   записываем байт знака `?`.
+3. Выполняем `text = string(encoded)`. Go собирает из обновлённых байтов строку `"П?"` и присваивает её `text`.
 
-replace example.com/messages => ./greetings
+```go
+text := "П!"
+encoded := []byte(text)
+fmt.Printf("% X\n", encoded) // D0 9F 21
+encoded[2] = '?'
+text = string(encoded)
+fmt.Println(text) // П?
 ```
 
-Для новой зависимости с такой заменой `go mod tidy` подставляет псевдоверсию. Если другое приложение использует
-ту же локальную библиотеку, оно добавляет `replace` в свой `go.mod`. Например, из соседнего с `greetings`
-каталога путь к библиотеке будет `../greetings`.
+## Руны
 
-## Структура проекта и запуск
+Если нужно сохранить одну букву `П`, её можно записать в одинарных кавычках или указать её номер в Unicode.
+`rune` — псевдоним для `int32`, поэтому обе записи дают одно число, `1055` в десятичной системе или `0x041F`
+в шестнадцатеричной.
 
-В этой ветке исходники и оба файла `go.mod` уже на месте.
-
-```text
-.                     # модуль приложения
-├── go.mod
-├── hello.go           # пакет main
-└── greetings/        # модуль example.com/messages
-    ├── go.mod
-    └── messages.go    # пакет messages
+```go
+var letter rune = 'П' // То же значение можно записать как 0x041F.
+var bytePairAsRune rune = 0xD09F
+fmt.Printf("%c %U %d\n", letter, letter, letter)      // П U+041F 1055
+fmt.Printf("%c %U\n", bytePairAsRune, bytePairAsRune) // 킟 U+D09F
 ```
 
-Из корня проекта выполните `go run .`. В этом примере `go run hello.go` даёт тот же результат.
+Когда `П` входит в строку, в UTF-8 ей соответствуют два байта `D0 9F`. Число `0xD09F`, составленное из этих
+байтов, указывает на другую кодовую точку Unicode, `킟`. При чтении строки эти два байта нужно декодировать
+по правилам UTF-8, чтобы получить `П`.
 
-```text
-Привет, Анна!
+## Преобразование строки в срез рун
+
+Если нужен доступ к руне по порядку, например ко второй руне в строке, преобразуем текст в `[]rune`.
+В строке `"П!"` у `!` байтовое смещение `2`, а в срезе рун её индекс равен `1`.
+
+### Перебор среза рун по индексам
+
+Каждый элемент среза содержит одну кодовую точку. Поэтому обычный цикл с индексом выводит целые руны.
+
+```go
+text := "П!"
+letters := []rune(text) // Получаем срез из двух рун: 'П' и '!'.
+for i := 0; i < len(letters); i++ {
+	fmt.Printf("%d: %c\n", i, letters[i]) // По строкам: 0: П, 1: !
+}
+```
+
+## Преобразование рун в строку
+
+Если текст уже представлен срезом рун, передадим его в `string(letters)`. Go запишет каждую руну в UTF-8
+и соберёт полученные байты в одну строку.
+
+```go
+letters := []rune{0x041F, '!'} // 0x041F — кодовая точка буквы П.
+fmt.Println(string(letters)) // П!
+```
+
+## Неизменяемость строк
+
+Иногда нужно заменить в тексте букву. Попробуем сменить `П` на `A` в строке `"П!"` через присваивание по индексу.
+Выражение `text[0]` позволяет прочитать первый байт. Байты строки в Go не адресуемы. Это значит, что взять
+адрес первого байта через `&text[0]` нельзя. Выражение `text[0]` также нельзя поставить слева от `=`.
+
+```go
+text := "П!"
+text[0] = 'A' // Ошибка компиляции: cannot assign to text[0].
+```
+
+### Замена руны в тексте
+
+Чтобы заменить букву целиком, преобразуем строку в `[]rune`. Элементы среза адресуемы, поэтому в `letters[0]`
+можно записать новую руну. Затем `string(letters)` закодирует руны в UTF-8. В строке `text = string(letters)`
+слева стоит сама переменная, и ей можно присвоить новое строковое значение.
+
+```go
+text := "П!"
+fmt.Println(text, len(text)) // П! 3
+letters := []rune(text)
+letters[0] = 'A' // Заменяем всю П, хотя в UTF-8 она занимает два байта.
+text = string(letters)
+fmt.Println(text, len(text)) // A! 2, новая строка короче на один байт.
 ```
 
 ## Источники
 
-- [Go Modules Reference · Modules, packages, and versions](https://go.dev/ref/mod#modules-overview)
-- [Go Modules Reference · go mod init](https://go.dev/ref/mod#go-mod-init)
-- [Go Specification · Exported identifiers](https://go.dev/ref/spec#Exported_identifiers)
-- [Go Specification · Import declarations](https://go.dev/ref/spec#Import_declarations)
-- [Go Modules Reference · go mod edit](https://go.dev/ref/mod#go-mod-edit)
-- [Go Modules Reference · replace](https://go.dev/ref/mod#go-mod-file-replace)
-- [Go Modules Reference · require](https://go.dev/ref/mod#go-mod-file-require)
-- [Go Modules Reference · go mod tidy](https://go.dev/ref/mod#go-mod-tidy)
-- [Исходный код Go · относительный путь replace](https://go.dev/src/cmd/go/internal/modload/modfile.go#L350)
-- [Исходный код Go · псевдоверсия локальной замены](https://go.dev/src/cmd/go/internal/modload/import.go#L533)
-- [cmd/go · go run](https://pkg.go.dev/cmd/go#hdr-Compile_and_run_Go_program)
-- [fmt.Println](https://pkg.go.dev/fmt#Println)
+- [Go Specification · String types](https://go.dev/ref/spec#String_types)
+- [Go Specification · String literals](https://go.dev/ref/spec#String_literals)
+- [Go Specification · Numeric types](https://go.dev/ref/spec#Numeric_types)
+- [Go Specification · Rune literals](https://go.dev/ref/spec#Rune_literals)
+- [Go Specification · Index expressions](https://go.dev/ref/spec#Index_expressions)
+- [Go Specification · Assignments](https://go.dev/ref/spec#Assignments)
+- [Go Specification · Slice expressions](https://go.dev/ref/spec#Slice_expressions)
+- [Go Specification · For statements with range clause](https://go.dev/ref/spec#For_range)
+- [Go Specification · String conversions](https://go.dev/ref/spec#Conversions_to_and_from_a_string_type)
+- [Go Blog · Code points, characters, and runes](https://go.dev/blog/strings#code-points-characters-and-runes)
+- [unicode/utf8 · RuneCountInString](https://pkg.go.dev/unicode/utf8#RuneCountInString)
+- [unicode/utf8 · ValidString](https://pkg.go.dev/unicode/utf8#ValidString)
+- [fmt · Printing](https://pkg.go.dev/fmt#hdr-Printing)
