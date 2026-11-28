@@ -15,8 +15,8 @@ type set[K comparable] = map[K]bool
 
 func main() {
 	showDistanceTypes()
-	showAliasIdentity()
 	showOperations()
+	showAliasIdentity()
 	showGenericAlias()
 }
 
@@ -77,13 +77,9 @@ func showOperations() {
 	var operation BinaryOp = rawOperation
 	action(10, 35, operation) // 45
 
-	// NamedBinaryOp — отдельный тип. Присваивание допустимо, так как тип add неименованный.
-	var namedOperation NamedBinaryOp = add
-	action(10, 35, namedOperation) // 45
-
-	// Два определённых функциональных типа требуют явного преобразования.
 	type anotherOperation func(int, int) int
-	// var other anotherOperation = namedOperation // Ошибка компиляции: оба типа именованные.
+	var namedOperation NamedBinaryOp = rawOperation // Тип rawOperation неименованный.
+	// var invalid anotherOperation = namedOperation // Ошибка компиляции. Оба типа именованные.
 	other := anotherOperation(namedOperation)
 	action(2, 3, other) // 5
 
