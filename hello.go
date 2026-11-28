@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-// Немедленный вызов вычисляет начальное значение, сохраняя ports локальной.
+// Немедленный вызов инициализирует defaultPorts. Имя ports видно только внутри литерала.
 var defaultPorts = func() []int {
 	ports := []int{8080, 443}
 	slices.Sort(ports)
@@ -19,7 +19,7 @@ func main() {
 	fmt.Println(double(4)) // 8
 
 	// Аргументы после тела сразу вызывают функцию.
-	fmt.Println(func(left, right int) int { return left + right }(3, 4)) // 7
+	fmt.Println(func(value int) int { return value * 2 }(5)) // 10
 
 	showSort()
 	fmt.Println(defaultPorts) // [443 8080]
