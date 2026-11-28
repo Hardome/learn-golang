@@ -4,7 +4,7 @@ import "fmt"
 
 // Все пять элементов получают нулевое значение типа int.
 var numbers [5]int // {0, 0, 0, 0, 0}
-var values = [5]int{1, 2, 3, 4, 5}
+var values = [3]int{1, 2, 3}
 
 func main() {
 	letters := [5]string{"a", "b", "c", "d", "e"}
@@ -13,15 +13,14 @@ func main() {
 	sparse := [...]int{3: 7}      // Последний индекс 3, поэтому длина равна 4.
 
 	fmt.Println("Нулевые значения:", numbers)                             // Нулевые значения: [0 0 0 0 0]
-	fmt.Println("Заданные значения:", values)                             // Заданные значения: [1 2 3 4 5]
+	fmt.Println("Заданные значения:", values)                             // Заданные значения: [1 2 3]
 	fmt.Println("Строки:", letters)                                       // Строки: [a b c d e]
 	fmt.Printf("Выведенный тип: %T %v\n", inferredLength, inferredLength) // Выведенный тип: [1]int [1]
 	fmt.Println("Частичное заполнение:", partial)                         // Частичное заполнение: [1 0 0 0 0]
 	fmt.Println("Элемент по индексу 3:", sparse)                          // Элемент по индексу 3: [0 0 0 7]
 
 	// Индексы начинаются с нуля. Последний индекс равен len(values) - 1.
-	fmt.Println("Длины:", len(letters), len(inferredLength))             // Длины: 5 1
-	fmt.Println("Первый и последний:", values[0], values[len(values)-1]) // Первый и последний: 1 5
+	fmt.Println(len(values), values[0], values[len(values)-1]) // 3 1 3
 
 	// Массивы одного типа сравниваются по элементам на одинаковых позициях.
 	nums1 := [4]int{3, 4, 5, 6}
@@ -33,14 +32,11 @@ func main() {
 	// Присваивание копирует массив целиком. Изменяем первый элемент копии.
 	copied := values
 	copied[0] = 99
-	fmt.Println("Оригинал:", values, "Копия:", copied) // Оригинал: [1 2 3 4 5] Копия: [99 2 3 4 5]
+	fmt.Println(values, copied) // [1 2 3] [99 2 3]
 
-	// range возвращает индекс и значение элемента. Здесь индекс пропускаем через _.
-	total := 0
-	for _, value := range values {
-		total += value
-	}
-	fmt.Println("Сумма элементов:", total) // Сумма элементов: 15
+	view := values[:]
+	view[1] = 20
+	fmt.Println(values) // [1 20 3]
 
 	// Перебор значения массива читает элементы снимка, сделанного до цикла.
 	sample := [3]int{1, 2, 3}
