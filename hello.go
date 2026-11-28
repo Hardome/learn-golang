@@ -48,13 +48,16 @@ func showSliceExpressions() {
 	pointer := &initialUsers
 	fmt.Println(pointer[2:4]) // [Kate Sam]
 
-	numbers := [6]int{1, 2, 3, 4, 5, 6}
-	window := numbers[1:5]
-	fmt.Println(window, len(window), cap(window)) // [2 3 4 5] 4 5
-	fmt.Println(window[:5])                       // [2 3 4 5 6]
-	// fmt.Println(window[4]) // Паника: для индексации действует len, а не cap.
-	limited := numbers[1:3:3]
-	fmt.Println(limited, len(limited), cap(limited)) // [2 3] 2 2
+	array := [4]int{10, 20, 30, 40}
+	window := array[:2]
+	fmt.Println(window, len(window), cap(window)) // [10 20] 2 4
+	wider := window[:4]
+	fmt.Println(wider[3], len(window)) // 40 2
+	// fmt.Println(window[2]) // Паника. Индекс 2 выходит за текущую длину.
+	limited := array[:2:2]
+	limited[0] = 11
+	fmt.Println(limited, len(limited), cap(limited)) // [11 20] 2 2
+	fmt.Println(array)                               // [11 20 30 40]
 
 	message := "Hello World"
 	fmt.Println(message[6:]) // World
@@ -64,15 +67,14 @@ func showSliceExpressions() {
 }
 
 func showSharingAndRange() {
-	array := [6]int{1, 2, 3, 4, 5, 6}
-	window := array[1:5]
-	array[1] = 22
-	fmt.Println(window) // [22 3 4 5]
-	window[1] = 33
-	fmt.Println(array) // [1 22 33 4 5 6]
+	array := [4]int{10, 20, 30, 40}
+	window := array[:2]
+	alias := window
+	alias[1] = 22
+	fmt.Println(window, array) // [10 22] [10 22 30 40]
 
-	alias := window[:1]
-	fmt.Println(len(window), len(alias)) // 4 1
+	alias = alias[:1]
+	fmt.Println(len(window), len(alias)) // 2 1
 
 	users := []string{"Tom", "Alice", "Kate"}
 	fmt.Println(users[2]) // Kate
@@ -113,9 +115,10 @@ func showAppend() {
 	extended := append(prefix, 99)       // Свободная ёмкость позволяет перезаписать array[2].
 	fmt.Println(prefix, extended, array) // [10 20] [10 20 99] [10 20 99 40]
 
-	detached := append(array[:2:2], 77) // При len == cap выделяется новый массив.
+	other := [4]int{10, 20, 30, 40}
+	detached := append(other[:2:2], 99) // При len == cap выделяется новый массив.
 	detached[0] = 100
-	fmt.Println(detached, array) // [100 20 77] [10 20 99 40]
+	fmt.Println(detached, other) // [100 20 99] [10 20 30 40]
 }
 
 func showDelete() {

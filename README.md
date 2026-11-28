@@ -73,13 +73,13 @@ fmt.Println(pointer[2:4])   // [Kate Sam]. Сокращение для (*pointer
 ### Длина ограничивает индекс, ёмкость — расширение
 
 ```go
-array := [6]int{1, 2, 3, 4, 5, 6}
-window := array[1:5] // От индекса 1 до 4, но исходный массив продолжается до индекса 5.
-fmt.Println(window, len(window), cap(window)) // [2 3 4 5] 4 5
+array := [4]int{10, 20, 30, 40}
+window := array[:2]
+fmt.Println(window, len(window), cap(window)) // [10 20] 2 4
 
-wider := window[:5]              // Правая граница допустима, потому что cap(window) == 5.
-fmt.Println(wider[4], len(window)) // 6 4. Длина window прежняя.
-// fmt.Println(window[4]) // Паника: индекс проверяется по len(window), а не по cap(window).
+wider := window[:4]
+fmt.Println(wider[3], len(window)) // 40 2. Длина window прежняя.
+// fmt.Println(window[2]) // Паника. Индекс 2 выходит за текущую длину.
 ```
 
 `cap` показывает, до какой длины можно расширить срез, сохраняя его начало и текущий массив.
@@ -89,11 +89,11 @@ fmt.Println(wider[4], len(window)) // 6 4. Длина window прежняя.
 ### Третий индекс ограничивает ёмкость
 
 ```go
-array := [6]int{1, 2, 3, 4, 5, 6}
-limited := array[1:3:3] // len = 3 - 1, cap = 3 - 1. Элементы по-прежнему общие.
-limited[0] = 22
-fmt.Println(limited, len(limited), cap(limited)) // [22 3] 2 2
-fmt.Println(array)                               // [1 22 3 4 5 6]
+array := [4]int{10, 20, 30, 40}
+limited := array[:2:2]
+limited[0] = 11
+fmt.Println(limited, len(limited), cap(limited)) // [11 20] 2 2
+fmt.Println(array)                            // [11 20 30 40]
 
 // _ = limited[:3] // Паника: новый предел превышает cap(limited).
 ```
@@ -111,16 +111,14 @@ fmt.Println(array)                               // [1 22 3 4 5 6]
 ### Запись видна через оба представления
 
 ```go
-array := [6]int{1, 2, 3, 4, 5, 6}
-window := array[1:5]
-array[1] = 22                       // array[1] — это window[0].
-fmt.Println(window)                // [22 3 4 5]
-window[1] = 33                      // window[1] — это array[2].
-fmt.Println(array)                 // [1 22 33 4 5 6]
+array := [4]int{10, 20, 30, 40}
+window := array[:2]
+alias := window
+alias[1] = 22
+fmt.Println(window, array) // [10 22] [10 22 30 40]
 
-alias := window                     // Копируем описание, элементы остаются общими.
-alias = alias[:1]                   // Длина меняется только у alias.
-fmt.Println(len(window), len(alias)) // 4 1
+alias = alias[:1]
+fmt.Println(len(window), len(alias)) // 2 1
 ```
 
 Рабочая модель среза — указатель на участок массива, длина и ёмкость. Спецификация
@@ -204,10 +202,11 @@ prefix := array[:2]                       // len = 2, cap = 4.
 extended := append(prefix, 99)            // Места хватает. Пишем в array[2].
 fmt.Println(prefix, extended, array)     // [10 20] [10 20 99] [10 20 99 40]
 
-limited := array[:2:2]                    // Те же первые элементы, но cap == len.
-detached := append(limited, 77)           // Для добавления нужен новый массив.
+other := [4]int{10, 20, 30, 40}
+limited := other[:2:2]                    // Те же первые элементы, но cap == len.
+detached := append(limited, 99)           // Для добавления нужен новый массив.
 detached[0] = 100
-fmt.Println(detached, array)              // [100 20 77] [10 20 99 40]
+fmt.Println(detached, other)              // [100 20 99] [10 20 30 40]
 ```
 
 Ограничение ёмкости защищает соседнюю область при добавлении, хотя до `append` запись
@@ -243,7 +242,10 @@ numbers = slices.Delete(numbers, 1, 3) // Удаляет индексы 1 и 2. 
 fmt.Println(numbers, original)        // [10 40] [10 40 0 0]. Хвост обнулён с Go 1.22.
 ```
 
-`slices.Delete(s, i, j)` меняет содержимое исходного массива и возвращает укороченный срез.
+`slices.Delete(s, i, j)` сдвигает элементы в исходном массиве и возвращает укороченный срез.
+Сохраните результат, чтобы использовать новую длину. Срез `original` сохраняет прежнюю длину, поэтому
+через него виден сдвинутый элемент `40` и хвост, который `slices.Delete` обнуляет начиная с Go 1.22.
+
 Если порядок не важен, перенесите последний элемент на место удаляемого. Тогда сдвиг не нужен.
 
 ```go
