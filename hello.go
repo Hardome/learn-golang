@@ -33,16 +33,11 @@ func main() {
 	fmt.Printf("smallComplex: %T = %v\n", smallComplex, smallComplex) // smallComplex: complex64 = (2+3i)
 	fmt.Printf("largeComplex: %T = %v\n", largeComplex, largeComplex) // largeComplex: complex128 = (2+3i)
 
-	// При целочисленном делении дробная часть отбрасывается.
-	// Преобразуем count в float64 до деления, чтобы получить 63.5.
-	fmt.Printf("count / 2 = %v, float64(count) / 2 = %v\n", count/2, float64(count)/2) // count / 2 = 63, float64(count) / 2 = 63.5
-	// count / 2 = 63, float64(count) / 2 = 63.5
-
 	// Переменные без начального значения получают нулевое значение своего типа.
-	var number int
+	var zero int
 	var text string
 	var flag bool
-	fmt.Printf("zero values: %v, %q, %v\n", number, text, flag) // zero values: 0, "", false
+	fmt.Printf("zero values: %v, %q, %v\n", zero, text, flag) // zero values: 0, "", false
 
 	// cents — отдельный тип, amount — альтернативное имя int.
 	type cents int
@@ -51,7 +46,10 @@ func main() {
 	var unit amount = 5
 	fmt.Println("Сумма после преобразования:", int(stored)+unit) // Сумма после преобразования: 30
 
-	// Строки могут содержать байты вне UTF-8, и индекс возвращает байт.
-	raw := "\xff"
-	fmt.Printf("Байт строки: %x\n", raw[0]) // Байт строки: ff
+	// Преобразование после целочисленного деления сохраняет уже усечённый результат.
+	fmt.Println(count/2, float64(count)/2, float64(count/2)) // 63 63.5 63
+
+	number := 256
+	fmt.Println(uint8(number)) // 0, младшие восемь бит числа 256 равны нулю.
+	// _ = uint8(256) // Ошибка компиляции. Константа выходит за диапазон uint8.
 }
