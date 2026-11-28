@@ -6,7 +6,6 @@ func main() {
 	// i начинается с 1. Перед каждой итерацией проверяется i <= 4.
 	// После выполнения тела цикла i увеличивается на единицу.
 	sum := 0
-	// [инициализация счетчика]; [условие]; [изменение счетчика]
 	for i := 1; i <= 4; i++ {
 		sum += i
 	}
@@ -41,9 +40,15 @@ func main() {
 	fmt.Println("Сумма чётных элементов:", evenSum) // Сумма чётных элементов: 10
 
 	// i объявляется заново на каждой итерации при семантике Go 1.22+.
-	var readIndex []func() int
+	var separate, shared []func() int
 	for i := range 3 {
-		readIndex = append(readIndex, func() int { return i })
+		separate = append(separate, func() int { return i })
 	}
-	fmt.Println("Индексы в замыканиях:", readIndex[0](), readIndex[1](), readIndex[2]()) // Индексы в замыканиях: 0 1 2
+	var i int
+	for i = range 3 {
+		shared = append(shared, func() int { return i })
+	}
+
+	fmt.Println(separate[0](), separate[1](), separate[2]()) // 0 1 2
+	fmt.Println(shared[0](), shared[1](), shared[2]())       // 2 2 2
 }
